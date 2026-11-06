@@ -1,0 +1,55 @@
+import nodemailer from 'nodemailer';
+import { config } from '../config.js';
+import { HttpError } from '../http.js';
+
+let transport;
+
+export const mailConfigured = () => !!(config.mail.host && config.mail.user && config.mail.password);
+
+function transporter() {
+  transport ??= nodemailer.createTransport({
+    host: config.mail.host,
+    port: config.mail.port,
+    secure: config.mail.port === 465, // 465 = SSL, 587 = STARTTLS
+    auth: { user: config.mail.user, pass: config.mail.password },
+  });
+  return transport;
+}
+
+/**
+ * Sends an email. Without SMTP settings: in development the email is printed
+ * to the console; in production it fails with a clear error.
+ */
+export async function sendMail({ to, subject, text, html }) {
+  if (!mailConfigured()) {
+    if (config.env !== 'production') {
+      console.log(`\n[mail not configured — would send]\nTo: ${to}\nSubject: ${subject}\n${text}\n`);
+      return;
+    }
+    throw new HttpError(503, 'Email is not set up on the server yet', 'mail_not_configured');
+  }
+  await transporter().sendMail({ from: `"${config.mail.appName}" <${config.mail.from}>`, to, subject, text, html });
+}
+
+const escape = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+export function passwordResetEmail({ name, code, minutes }) {
+  const app = config.mail.appName;
+  const hello = name ? `Hi ${name},` : 'Hi,';
+  const text = `${hello}
+
+Your ${app} password reset code is: ${code}
+
+It expires in ${minutes} minutes. Enter it in the app (or at ${config.publicUrl}/reset-password) and choose a new password.
+
+If you didn't ask for this, ignore this email — your password stays the same.`;
+  const html = `<div style="font-family:system-ui,Segoe UI,Roboto,sans-serif;max-width:480px;margin:auto;padding:24px;color:#1b1d2a">
+  <h2 style="margin:0 0 12px">${escape(app)}</h2>
+  <p>${escape(hello)}</p>
+  <p>Your password reset code is:</p>
+  <p style="font-size:32px;font-weight:700;letter-spacing:6px;margin:16px 0">${escape(code)}</p>
+  <p>It expires in ${minutes} minutes. Enter it in the app (or at <a href="${escape(config.publicUrl)}/reset-password">${escape(config.publicUrl)}/reset-password</a>) and choose a new password.</p>
+  <p style="color:#6b6f85;font-size:13px">If you didn't ask for this, ignore this email — your password stays the same.</p>
+</div>`;
+  return { subject: `${code} is your ${app} password reset code`, text, html };
+}

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Abhi Utility Admin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Login -->
+  <main id="login-view" class="login hidden">
+    <form id="login-form" class="card login-card">
+      <h1>Abhi Utility</h1>
+      <p class="muted">Admin panel</p>
+      <label>Email <input type="email" name="email" autocomplete="username" required></label>
+      <label>Password <input type="password" name="password" autocomplete="current-password" required></label>
+      <p id="login-error" class="error"></p>
+      <button class="primary" type="submit">Log in</button>
+    </form>
+  </main>
+
+  <!-- Dashboard -->
+  <div id="app-view" class="hidden">
+    <header class="topbar">
+      <strong>Abhi Utility · Admin</strong>
+      <span class="spacer"></span>
+      <span id="me-email" class="muted"></span>
+      <button id="logout" class="ghost">Log out</button>
+    </header>
+
+    <main class="content">
+      <section class="stats" id="stats"></section>
+
+      <section class="card">
+        <div class="toolbar">
+          <input id="search" type="search" placeholder="Search email or name…">
+          <select id="filter" aria-label="Filter">
+            <option value="all">All users</option>
+            <option value="pro">Pro</option>
+            <option value="free">Free</option>
+            <option value="admin">Admins</option>
+            <option value="disabled">Disabled</option>
+          </select>
+          <span class="spacer"></span>
+          <button id="new-user" class="primary">+ New user</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Email</th><th>Name</th><th>Plan</th><th>Role</th><th>Status</th><th>Created</th><th>Last login</th></tr>
+            </thead>
+            <tbody id="users"></tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <button id="prev" class="ghost">‹ Prev</button>
+          <span id="page-info" class="muted"></span>
+          <button id="next" class="ghost">Next ›</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- New user -->
+  <dialog id="new-user-dialog">
+    <form id="new-user-form" method="dialog" class="dialog-body">
+      <h2>New user</h2>
+      <label>Email <input type="email" name="email" required></label>
+      <label>Name <input type="text" name="name" maxlength="100"></label>
+      <label>Password
+        <span class="row">
+          <input type="text" name="password" minlength="8" required>
+          <button type="button" id="gen-password" class="ghost">Generate</button>
+        </span>
+      </label>
+      <label>Role
+        <select name="role"><option value="user">User</option><option value="admin">Admin</option></select>
+      </label>
+      <label>Give Pro
+        <select name="proDays">
+          <option value="">No</option>
+          <option value="7">7 days</option>
+          <option value="30">30 days</option>
+          <option value="90">90 days</option>
+          <option value="365">1 year</option>
+          <option value="lifetime">Lifetime</option>
+        </select>
+      </label>
+      <p class="error" id="new-user-error"></p>
+      <div class="actions">
+        <button type="button" class="ghost" data-close>Cancel</button>
+        <button type="submit" class="primary">Create user</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- User details -->
+  <dialog id="user-dialog">
+    <div class="dialog-body">
+      <div class="row">
+        <h2 id="u-title"></h2>
+        <span class="spacer"></span>
+        <button class="ghost" data-close>✕</button>
+      </div>
+      <div id="u-summary" class="summary"></div>
+
+      <h3>Give Pro</h3>
+      <form id="grant-form" class="row wrap">
+        <select name="days">
+          <option value="7">7 days</option>
+          <option value="30" selected>30 days</option>
+          <option value="90">90 days</option>
+          <option value="365">1 year</option>
+          <option value="lifetime">Lifetime</option>
+        </select>
+        <input name="note" placeholder="Note (optional)" maxlength="255">
+        <button class="primary" type="submit">Give Pro</button>
+      </form>
+
+      <h3>Subscriptions</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Source</th><th>Product</th><th>Status</th><th>Expires</th><th>Note</th><th></th></tr></thead>
+          <tbody id="u-subs"></tbody>
+        </table>
+      </div>
+
+      <h3>Account</h3>
+      <form id="reset-form" class="row wrap">
+        <input name="password" type="text" minlength="8" placeholder="New password (min 8)" required>
+        <button class="ghost" type="submit">Reset password</button>
+      </form>
+      <div class="row wrap">
+        <button id="u-toggle-status" class="ghost"></button>
+        <button id="u-toggle-role" class="ghost"></button>
+        <button id="u-delete-backups" class="ghost">Delete backups</button>
+        <span class="spacer"></span>
+        <button id="u-delete" class="danger">Delete user</button>
+      </div>
+
+      <h3>History</h3>
+      <ul id="u-actions" class="history"></ul>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>

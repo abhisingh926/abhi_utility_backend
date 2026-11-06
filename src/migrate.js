@@ -1,0 +1,124 @@
+import { query } from './db.js';
+
+/**
+ * Database schema. Every statement is safe to run again, so this runs on every
+ * start: no manual SQL needed on Hostinger.
+ */
+const statements = [
+  `CREATE TABLE IF NOT EXISTS users (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    uuid CHAR(36) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NULL,
+    role ENUM('user','admin') NOT NULL DEFAULT 'user',
+    status ENUM('active','disabled') NOT NULL DEFAULT 'active',
+    created_by_admin TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    last_login_at DATETIME NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    device VARCHAR(120) NULL,
+    expires_at DATETIME NOT NULL,
+    revoked_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_refresh_user (user_id),
+    CONSTRAINT fk_refresh_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  // One row per store subscription (Google purchase token / Apple original
+  // transaction) or per Pro grant made by an admin.
+  `CREATE TABLE IF NOT EXISTS subscriptions (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NULL,
+    source ENUM('google','apple','admin') NOT NULL,
+    product_id VARCHAR(150) NOT NULL,
+    store_ref VARCHAR(512) NULL,
+    store_ref_hash CHAR(64) NULL UNIQUE,
+    status ENUM('active','grace','cancelled','on_hold','paused','pending','expired','revoked') NOT NULL,
+    auto_renew TINYINT(1) NOT NULL DEFAULT 0,
+    starts_at DATETIME NULL,
+    expires_at DATETIME NULL,
+    note VARCHAR(255) NULL,
+    raw JSON NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_sub_user (user_id),
+    CONSTRAINT fk_sub_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  // Every notification / verification from Google and Apple (for debugging).
+  `CREATE TABLE IF NOT EXISTS store_events (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    source ENUM('google','apple') NOT NULL,
+    event_type VARCHAR(80) NULL,
+    store_ref_hash CHAR(64) NULL,
+    payload JSON NULL,
+    processed_ok TINYINT(1) NOT NULL DEFAULT 1,
+    error VARCHAR(500) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_event_ref (store_ref_hash)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  // Forgot password: 6-digit codes sent by email (stored hashed).
+  `CREATE TABLE IF NOT EXISTS password_resets (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    code_hash CHAR(64) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    used_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_reset_user (user_id),
+    CONSTRAINT fk_reset_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  // Backup snapshots of the user's diary + tasks. The payload is opaque to the
+  // server (the app may encrypt it before upload).
+  `CREATE TABLE IF NOT EXISTS backups (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    payload MEDIUMTEXT NOT NULL,
+    encrypted TINYINT(1) NOT NULL DEFAULT 0,
+    size_bytes INT UNSIGNED NOT NULL,
+    photo_hashes JSON NULL,
+    meta JSON NULL,
+    device VARCHAR(120) NULL,
+    app_version VARCHAR(40) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_backup_user (user_id, created_at),
+    CONSTRAINT fk_backup_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  // Photos used by backups, stored once per user per content hash.
+  `CREATE TABLE IF NOT EXISTS backup_photos (
+    user_id INT UNSIGNED NOT NULL,
+    sha256 CHAR(64) NOT NULL,
+    size_bytes INT UNSIGNED NOT NULL,
+    content_type VARCHAR(100) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, sha256),
+    CONSTRAINT fk_photo_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS admin_actions (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT UNSIGNED NULL,
+    target_user_id INT UNSIGNED NULL,
+    action VARCHAR(60) NOT NULL,
+    details JSON NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_action_target (target_user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+];
+
+export async function migrate() {
+  for (const sql of statements) {
+    await query(sql);
+  }
+}

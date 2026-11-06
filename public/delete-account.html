@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Delete your Abhi Utility account</title>
+  <link rel="stylesheet" href="/static/site.css">
+</head>
+<body>
+  <main class="card">
+    <h1>Delete your account</h1>
+    <p>This permanently deletes your Abhi Utility account: your email, name, login sessions and subscription records.</p>
+    <ul>
+      <li>Data stored only on your phone (diary, tasks, reel history, PDFs) is not on our server; uninstall the app to remove it.</li>
+      <li>Deleting your account does <strong>not</strong> cancel a Google Play or App Store subscription. Cancel it in the Play Store or in your iPhone settings first.</li>
+      <li>You can also delete your account inside the app: Settings → Account → Delete account.</li>
+    </ul>
+    <form id="delete-form">
+      <label>Email <input type="email" name="email" autocomplete="username" required></label>
+      <label>Password <input type="password" name="password" autocomplete="current-password" required></label>
+      <p id="message" class="message"></p>
+      <button type="submit">Delete my account permanently</button>
+    </form>
+  </main>
+  <script src="/static/delete-account.js"></script>
+</body>
+</html>

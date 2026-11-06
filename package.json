@@ -1,0 +1,29 @@
+{
+  "name": "abhi-utility-backend",
+  "version": "1.0.0",
+  "description": "Accounts, subscriptions (Google Play / App Store) and admin panel for the Abhi Utility app",
+  "type": "module",
+  "main": "server.js",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test test/",
+    "smoke": "node scripts/smoke.js"
+  },
+  "dependencies": {
+    "@apple/app-store-server-library": "^3.1.0",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^18.0.9",
+    "express": "^4.22.3",
+    "express-rate-limit": "^8.7.3",
+    "google-auth-library": "^10.9.1",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.24.6",
+    "nodemailer": "^10.3.1"
+  }
+}
