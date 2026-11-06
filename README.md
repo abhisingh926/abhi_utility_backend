@@ -89,6 +89,30 @@ Menu names in hPanel change from time to time; look for the closest match.
    - `https://purple-koala-695199.hostingersite.com/admin` → log in with the admin account.
 6. **HTTPS** must be on (Hostinger's free SSL) – the app and Google/Apple webhooks need it.
 
+## CI/CD (auto-deploy on push to `main`)
+
+[.github/workflows/deploy.yml](.github/workflows/deploy.yml) runs on every push and pull request to `main`:
+
+1. **Test** – `npm ci`, syntax check of every `.js` file, `npm test`, and a check that the app starts.
+2. **Release** (pushes to `main` only, tests green) – moves the `production` branch to that commit.
+3. **Hostinger** is connected to `production` and redeploys by itself (`npm install` + restart).
+4. **Health** – waits for `https://<site>/api/health` to answer `{"ok":true}`; the run fails if it doesn't.
+
+So broken code never reaches the live site: if tests fail, `production` isn't moved.
+
+**One-time setup**
+
+1. Push this workflow to `main` once. The first run creates the `production` branch.
+2. hPanel → *Websites* → your Node.js app → *Deployments / Git* → connect GitHub repo `abhi_utility_backend`, **branch `production`** (not `main`). Entry `server.js`, start `npm start`, Node 20 or 22. Auto-deploy is on by default for Git deploys.
+   - If the app was first created from a zip, create it again with *Import Git repository* and copy the environment variables over.
+3. GitHub → *Settings → Actions → General → Workflow permissions* → **Read and write** (the release job pushes `production`).
+4. Optional:
+   - *Settings → Environments → production* → add yourself as a required reviewer to approve each deploy by hand.
+   - *Settings → Secrets and variables → Actions → Variables* → `PUBLIC_URL` if the site address changes.
+   - *Settings → Branches* → protect `main` and require the **Test** check before merging PRs.
+
+Re-deploy without a code change: *Actions → CI / Deploy → Run workflow*. Roll back: run the workflow from an older commit, or `git push origin <old-sha>:production --force`.
+
 ## Google Play setup (for real Android purchases)
 
 1. **Play Console** – create the app, upload a build (`.aab`) to *Internal testing*, then *Monetize → Subscriptions*: create `abhi_pro_monthly` and `abhi_pro_yearly` (or change `PRODUCT_*`), each with a base plan and price.

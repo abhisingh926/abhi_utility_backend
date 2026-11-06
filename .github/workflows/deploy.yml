@@ -1,0 +1,92 @@
+# CI/CD for the backend.
+#
+#   push / PR to main ──► test ──(main only, tests green)──► move `production` to this commit
+#                                                             │
+#                         Hostinger (connected to `production`) redeploys automatically
+#                                                             │
+#                                         health check ◄──────┘
+#
+# One-time setup: see "CI/CD" in README.md.
+name: CI / Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: # "Run workflow" button: re-deploy the current main
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false # never cut a deploy off half-way
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax check every file
+        run: |
+          find . -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -n1 node --check
+
+      - name: Unit tests
+        run: npm test
+
+      - name: App loads (no database needed)
+        env: # dummy values: the app is only built, nothing connects
+          JWT_SECRET: ci-only-secret-ci-only-secret-ci-only-secret
+          DB_USER: ci
+          DB_NAME: ci
+        run: node -e "import('./src/app.js').then(m => { m.createApp(); console.log('app OK'); })"
+
+  release:
+    name: Release to production branch
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production # optional: add required reviewers in Settings → Environments
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Point production at this commit
+        run: |
+          git push origin "${GITHUB_SHA}:refs/heads/production" --force
+          echo "production → ${GITHUB_SHA}" >> "$GITHUB_STEP_SUMMARY"
+
+  health:
+    name: Check live site
+    needs: release
+    runs-on: ubuntu-latest
+    env:
+      # Settings → Secrets and variables → Actions → Variables → PUBLIC_URL (optional)
+      PUBLIC_URL: ${{ vars.PUBLIC_URL || 'https://purple-koala-695199.hostingersite.com' }}
+    steps:
+      - name: Wait for Hostinger to finish deploying
+        run: |
+          # Give Hostinger time to pull, npm install and restart.
+          sleep 90
+          for i in $(seq 1 20); do
+            body=$(curl -s -m 15 "$PUBLIC_URL/api/health" || true)
+            if echo "$body" | grep -q '"ok":true'; then
+              echo "✅ $PUBLIC_URL is up: $body" | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Attempt $i: not up yet"
+            sleep 15
+          done
+          echo "❌ $PUBLIC_URL/api/health did not answer {\"ok\":true}. Check the deploy log in hPanel." | tee -a "$GITHUB_STEP_SUMMARY"
+          exit 1
