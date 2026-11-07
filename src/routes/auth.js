@@ -6,6 +6,7 @@ import { ah, HttpError } from '../http.js';
 import { requireAuth } from '../middleware/auth.js';
 import { entitlementFor } from '../services/entitlements.js';
 import { passwordResetEmail, sendMail } from '../services/mailer.js';
+import { startTrialIfEligible } from '../services/trial.js';
 import { revokeAllForUser, revokeRefresh, rotateRefresh, sessionFor, sha256, signAccess } from '../services/tokens.js';
 import { checkPassword, createUser, dummyCheck, findByEmail, findById, hashPassword, publicUser } from '../services/users.js';
 import * as v from '../validate.js';
@@ -29,7 +30,9 @@ authRouter.post('/register', ah(async (req, res) => {
     password: v.password(req.body?.password),
     name: v.optionalName(req.body?.name),
   });
-  res.status(201).json(await sessionResponse(user, req));
+  // Registering is what starts the free trial.
+  const trialStarted = await startTrialIfEligible(user);
+  res.status(201).json({ ...(await sessionResponse(user, req)), trialStarted });
 }));
 
 /** POST /api/v1/auth/login { email, password } */
@@ -41,7 +44,9 @@ authRouter.post('/login', ah(async (req, res) => {
   if (!user || !ok) throw new HttpError(401, 'Wrong email or password', 'invalid_credentials');
   if (user.status !== 'active') throw new HttpError(403, 'This account has been disabled', 'account_disabled');
   await query('UPDATE users SET last_login_at = UTC_TIMESTAMP() WHERE id = ?', [user.id]);
-  res.json(await sessionResponse(user, req));
+  // Accounts made before the trial existed (or by an admin) get theirs on first login.
+  const trialStarted = await startTrialIfEligible(user);
+  res.json({ ...(await sessionResponse(user, req)), trialStarted });
 }));
 
 /** POST /api/v1/auth/refresh { refreshToken } -> new token pair */

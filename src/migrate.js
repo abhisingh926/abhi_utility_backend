@@ -1,4 +1,4 @@
-import { query } from './db.js';
+import { one, query } from './db.js';
 
 /**
  * Database schema. Every statement is safe to run again, so this runs on every
@@ -36,7 +36,7 @@ const statements = [
   `CREATE TABLE IF NOT EXISTS subscriptions (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id INT UNSIGNED NULL,
-    source ENUM('google','apple','admin') NOT NULL,
+    source ENUM('google','apple','admin','trial') NOT NULL,
     product_id VARCHAR(150) NOT NULL,
     store_ref VARCHAR(512) NULL,
     store_ref_hash CHAR(64) NULL UNIQUE,
@@ -106,6 +106,14 @@ const statements = [
     CONSTRAINT fk_photo_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  // Emails (normalised, hashed) that already used the free trial. Kept when the
+  // account is deleted, so deleting and signing up again doesn't give a new trial.
+  `CREATE TABLE IF NOT EXISTS trial_claims (
+    email_hash CHAR(64) NOT NULL PRIMARY KEY,
+    user_id INT UNSIGNED NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   `CREATE TABLE IF NOT EXISTS admin_actions (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     admin_id INT UNSIGNED NULL,
@@ -120,5 +128,17 @@ const statements = [
 export async function migrate() {
   for (const sql of statements) {
     await query(sql);
+  }
+  await addTrialSource();
+}
+
+/** Databases created before the free trial existed: add 'trial' to subscriptions.source. */
+async function addTrialSource() {
+  const col = await one(
+    `SELECT COLUMN_TYPE AS type FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'subscriptions' AND COLUMN_NAME = 'source'`,
+  );
+  if (col && !String(col.type).includes("'trial'")) {
+    await query("ALTER TABLE subscriptions MODIFY source ENUM('google','apple','admin','trial') NOT NULL");
   }
 }

@@ -12,6 +12,7 @@ export const plansRouter = Router();
 /** GET /api/v1/plans -> product IDs the app should offer (public). */
 plansRouter.get('/', (req, res) => {
   res.json({
+    trialDays: config.trial.days, // free trial after registering
     products: [
       { id: config.products.monthly, period: 'month' },
       { id: config.products.yearly, period: 'year' },

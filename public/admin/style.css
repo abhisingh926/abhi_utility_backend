@@ -92,6 +92,7 @@ td.empty { text-align: center; color: var(--muted); padding: 24px; }
 
 .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: var(--badge); }
 .badge.pro { background: var(--pro); color: #fff; }
+.badge.trial { background: #0e7490; color: #fff; }
 .badge.disabled { background: var(--danger); color: #fff; }
 .badge.admin { background: var(--primary); color: #fff; }
 

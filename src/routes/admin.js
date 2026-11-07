@@ -3,7 +3,7 @@ import { one, query } from '../db.js';
 import { ah, HttpError } from '../http.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { deleteAllBackups, usageFor } from '../services/backups.js';
-import { entitlementFor, listSubscriptions, PRO_SQL } from '../services/entitlements.js';
+import { entitlementFor, listSubscriptions, PRO_SQL, proSql } from '../services/entitlements.js';
 import { revokeAllForUser } from '../services/tokens.js';
 import { createUser, findById, hashPassword, publicUser } from '../services/users.js';
 import * as v from '../validate.js';
@@ -46,7 +46,12 @@ adminRouter.get('/stats', ah(async (req, res) => {
     `SELECT
        (SELECT COUNT(*) FROM users) AS users,
        (SELECT COUNT(*) FROM users WHERE created_at > UTC_TIMESTAMP() - INTERVAL 7 DAY) AS newThisWeek,
-       (SELECT COUNT(DISTINCT user_id) FROM subscriptions WHERE user_id IS NOT NULL AND ${PRO_SQL}) AS pro,
+       (SELECT COUNT(DISTINCT user_id) FROM subscriptions
+          WHERE user_id IS NOT NULL AND source <> 'trial' AND ${PRO_SQL}) AS pro,
+       (SELECT COUNT(DISTINCT t.user_id) FROM subscriptions t
+          WHERE t.user_id IS NOT NULL AND t.source = 'trial' AND ${proSql('t')}
+            AND NOT EXISTS (SELECT 1 FROM subscriptions p WHERE p.user_id = t.user_id AND p.source <> 'trial'
+              AND ${proSql('p')})) AS onTrial,
        (SELECT COUNT(DISTINCT user_id) FROM subscriptions
           WHERE user_id IS NOT NULL AND source IN ('google','apple') AND ${PRO_SQL}) AS paying,
        (SELECT COUNT(*) FROM users WHERE status = 'disabled') AS disabled`,
@@ -54,13 +59,15 @@ adminRouter.get('/stats', ah(async (req, res) => {
   res.json(Object.fromEntries(Object.entries(stats).map(([k, val]) => [k, Number(val)])));
 }));
 
-/** GET /api/v1/admin/users?q=&filter=all|pro|free|disabled|admin&page=1 */
+/** GET /api/v1/admin/users?q=&filter=all|pro|trial|free|disabled|admin&page=1 */
 adminRouter.get('/users', ah(async (req, res) => {
   const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
   const page = Math.max(1, Number(req.query.page) || 1);
   const pageSize = 25;
-  const proExists = `EXISTS (SELECT 1 FROM subscriptions s WHERE s.user_id = u.id
-    AND s.status IN ('active','grace','cancelled') AND (s.expires_at IS NULL OR s.expires_at > UTC_TIMESTAMP()))`;
+  const activeSub = (sourceSql) =>
+    `EXISTS (SELECT 1 FROM subscriptions s WHERE s.user_id = u.id AND ${sourceSql} AND ${proSql('s')})`;
+  const proExists = activeSub("s.source <> 'trial'"); // paid or given by an admin
+  const trialExists = activeSub("s.source = 'trial'");
 
   const where = [];
   const params = [];
@@ -70,18 +77,24 @@ adminRouter.get('/users', ah(async (req, res) => {
   }
   const filter = req.query.filter;
   if (filter === 'pro') where.push(proExists);
-  if (filter === 'free') where.push(`NOT ${proExists}`);
+  if (filter === 'trial') where.push(`${trialExists} AND NOT ${proExists}`);
+  if (filter === 'free') where.push(`NOT ${proExists} AND NOT ${trialExists}`);
   if (filter === 'disabled') where.push("u.status = 'disabled'");
   if (filter === 'admin') where.push("u.role = 'admin'");
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
   const total = Number((await one(`SELECT COUNT(*) AS n FROM users u ${whereSql}`, params)).n);
   const rows = await query(
-    `SELECT u.*, ${proExists} AS is_pro FROM users u ${whereSql} ORDER BY u.id DESC LIMIT ? OFFSET ?`,
+    `SELECT u.*, ${proExists} AS is_pro, ${trialExists} AS on_trial FROM users u ${whereSql} ORDER BY u.id DESC LIMIT ? OFFSET ?`,
     [...params, pageSize, (page - 1) * pageSize],
   );
   res.json({
-    users: rows.map((u) => ({ ...publicUser(u), isPro: !!u.is_pro, createdByAdmin: !!u.created_by_admin })),
+    users: rows.map((u) => ({
+      ...publicUser(u),
+      isPro: !!u.is_pro,
+      onTrial: !u.is_pro && !!u.on_trial,
+      createdByAdmin: !!u.created_by_admin,
+    })),
     page,
     pageSize,
     total,
@@ -180,18 +193,18 @@ adminRouter.post('/users/:id/grant', ah(async (req, res) => {
 
 /**
  * POST /api/v1/admin/users/:id/subscriptions/:subId/revoke
- * Ends an admin grant. Store subscriptions are controlled by Google/Apple:
+ * Ends an admin grant or a free trial. Store subscriptions are controlled by Google/Apple:
  * cancel or refund those in Play Console / App Store Connect instead.
  */
 adminRouter.post('/users/:id/subscriptions/:subId/revoke', ah(async (req, res) => {
   const user = await targetUser(req);
   const sub = await one('SELECT * FROM subscriptions WHERE id = ? AND user_id = ?', [Number(req.params.subId), user.id]);
   if (!sub) throw new HttpError(404, 'Subscription not found', 'not_found');
-  if (sub.source !== 'admin') {
+  if (sub.source !== 'admin' && sub.source !== 'trial') {
     throw new HttpError(400, 'Store subscriptions are cancelled or refunded in Play Console / App Store Connect', 'store_managed');
   }
   await query("UPDATE subscriptions SET status = 'revoked', expires_at = UTC_TIMESTAMP() WHERE id = ?", [sub.id]);
-  await logAction(req, user.id, 'revoke_pro', { subscriptionId: sub.id });
+  await logAction(req, user.id, sub.source === 'trial' ? 'end_trial' : 'revoke_pro', { subscriptionId: sub.id });
   res.json({ entitlement: await entitlementFor(user.id) });
 }));
 

@@ -69,7 +69,8 @@
   const badge = (text, cls = '') => el('span', { class: `badge ${cls}` }, text);
 
   function entitlementText(e) {
-    if (!e.isPro) return 'Free';
+    if (!e.isPro) return e.trial && e.trial.used ? `Free · trial ended ${fmtDay(e.trial.endsAt)}` : 'Free';
+    if (e.isTrial) return `Free trial · until ${fmtDay(e.expiresAt)}`;
     const until = e.expiresAt ? `until ${fmtDay(e.expiresAt)}` : 'lifetime';
     return `Pro (${e.source}) · ${until}${e.autoRenew ? ' · renews' : ''}`;
   }
@@ -145,6 +146,7 @@
     const items = [
       ['Users', s.users],
       ['Pro now', s.pro],
+      ['On free trial', s.onTrial],
       ['Paying (store)', s.paying],
       ['New this week', s.newThisWeek],
       ['Disabled', s.disabled],
@@ -166,7 +168,7 @@
         { class: 'clickable', onclick: () => openUser(u.id) },
         el('td', {}, u.email),
         el('td', {}, u.name || '—'),
-        el('td', {}, u.isPro ? badge('Pro', 'pro') : badge('Free')),
+        el('td', {}, u.isPro ? badge('Pro', 'pro') : u.onTrial ? badge('Trial', 'trial') : badge('Free')),
         el('td', {}, u.role === 'admin' ? badge('Admin', 'admin') : 'User'),
         el('td', {}, u.status === 'active' ? 'Active' : badge('Disabled', 'disabled')),
         el('td', {}, fmtDay(u.createdAt)),
@@ -277,8 +279,8 @@
               el(
                 'td',
                 {},
-                s.source === 'admin' && s.status === 'active'
-                  ? el('button', { class: 'ghost', onclick: () => revoke(s.id) }, 'Revoke')
+                (s.source === 'admin' || s.source === 'trial') && s.status === 'active'
+                  ? el('button', { class: 'ghost', onclick: () => revoke(s.id, s.source) }, s.source === 'trial' ? 'End trial' : 'Revoke')
                   : '',
               ),
             ),
@@ -322,9 +324,11 @@
     ev.target.reset();
   });
 
-  function revoke(subId) {
-    if (!confirm('End this Pro grant now?')) return;
-    act(() => api(`/admin/users/${state.current.user.id}/subscriptions/${subId}/revoke`, { method: 'POST' }), 'Pro removed');
+  function revoke(subId, source) {
+    const trial = source === 'trial';
+    if (!confirm(trial ? 'End this free trial now? The user will need to subscribe.' : 'End this Pro grant now?')) return;
+    act(() => api(`/admin/users/${state.current.user.id}/subscriptions/${subId}/revoke`, { method: 'POST' }),
+      trial ? 'Trial ended' : 'Pro removed');
   }
 
   $('#reset-form').addEventListener('submit', (ev) => {

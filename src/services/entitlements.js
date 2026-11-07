@@ -4,25 +4,43 @@ import { sha256 } from './tokens.js';
 /** Statuses that still give Pro (cancelled = won't renew, but paid until expiry). */
 export const PRO_STATUSES = ['active', 'grace', 'cancelled'];
 
+/** SQL condition "this subscription row gives Pro now", for a table alias. */
+export const proSql = (alias) =>
+  `${alias}.status IN ('active','grace','cancelled') AND (${alias}.expires_at IS NULL OR ${alias}.expires_at > UTC_TIMESTAMP())`;
+
 export const PRO_SQL = "status IN ('active','grace','cancelled') AND (expires_at IS NULL OR expires_at > UTC_TIMESTAMP())";
 
-/** Is the user Pro right now, and until when? */
+/**
+ * Is the user Pro right now, and until when? A free trial counts as Pro; a
+ * paid or admin-given plan is preferred over the trial when both are active.
+ */
 export async function entitlementFor(userId) {
   const best = await one(
     `SELECT * FROM subscriptions WHERE user_id = ? AND ${PRO_SQL}
-     ORDER BY expires_at IS NULL DESC, expires_at DESC LIMIT 1`,
+     ORDER BY source = 'trial' ASC, expires_at IS NULL DESC, expires_at DESC LIMIT 1`,
     [userId],
   );
+  const trialRow = await one(
+    "SELECT starts_at, expires_at FROM subscriptions WHERE user_id = ? AND source = 'trial' ORDER BY id DESC LIMIT 1",
+    [userId],
+  );
+  const trial = {
+    used: !!trialRow,
+    startedAt: trialRow?.starts_at ?? null,
+    endsAt: trialRow?.expires_at ?? null,
+  };
   if (!best) {
-    return { isPro: false, source: null, productId: null, status: null, expiresAt: null, autoRenew: false };
+    return { isPro: false, isTrial: false, source: null, productId: null, status: null, expiresAt: null, autoRenew: false, trial };
   }
   return {
     isPro: true,
-    source: best.source, // google | apple | admin
+    isTrial: best.source === 'trial',
+    source: best.source, // google | apple | admin | trial
     productId: best.product_id,
     status: best.status,
     expiresAt: best.expires_at, // null = lifetime
     autoRenew: !!best.auto_renew,
+    trial,
   };
 }
 

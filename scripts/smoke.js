@@ -27,10 +27,19 @@ await call('GET', '/api/v1/plans');
 
 // Sign up, log in, wrong password, duplicate email.
 const reg = await call('POST', '/api/v1/auth/register', { body: { email, password, name: 'Smoke' }, expect: 201 });
-assert.equal(reg.entitlement.isPro, false);
+// Registering starts the free trial (unless TRIAL_DAYS=0).
+const trialOn = Number(process.env.TRIAL_DAYS ?? 30) > 0;
+assert.equal(reg.trialStarted, trialOn);
+assert.equal(reg.entitlement.isPro, trialOn);
+if (trialOn) {
+  assert.equal(reg.entitlement.isTrial, true);
+  assert.equal(reg.entitlement.source, 'trial');
+  assert.ok(new Date(reg.entitlement.expiresAt) > new Date());
+}
 await call('POST', '/api/v1/auth/register', { body: { email, password }, expect: 409 });
 await call('POST', '/api/v1/auth/login', { body: { email, password: 'wrong-password' }, expect: 401 });
 const login = await call('POST', '/api/v1/auth/login', { body: { email, password } });
+assert.equal(login.trialStarted, false); // only one trial
 await call('GET', '/api/v1/me', { expect: 401 });
 const me = await call('GET', '/api/v1/me', { token: login.accessToken });
 assert.equal(me.user.email, email);
@@ -62,9 +71,13 @@ const proList = await call('GET', '/api/v1/admin/users?filter=pro', { token: adm
 assert.ok(proList.users.some((u) => u.id === id));
 
 const detail = await call('GET', `/api/v1/admin/users/${id}`, { token: admin.accessToken });
-const subId = detail.subscriptions[0].id;
-const revoked = await call('POST', `/api/v1/admin/users/${id}/subscriptions/${subId}/revoke`, { token: admin.accessToken });
+// Paid/admin Pro wins over the trial; revoke the grant and the trial too.
+for (const s of detail.subscriptions.filter((x) => x.source === 'admin' || x.source === 'trial')) {
+  await call('POST', `/api/v1/admin/users/${id}/subscriptions/${s.id}/revoke`, { token: admin.accessToken });
+}
+const revoked = await call('GET', '/api/v1/me', { token: login.accessToken });
 assert.equal(revoked.entitlement.isPro, false);
+assert.equal(revoked.entitlement.trial.used, trialOn);
 
 await call('POST', `/api/v1/admin/users/${id}/grant`, { token: admin.accessToken, body: { lifetime: true } });
 assert.equal((await call('GET', '/api/v1/me', { token: login.accessToken })).entitlement.expiresAt, null);

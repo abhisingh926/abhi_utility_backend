@@ -36,6 +36,11 @@ export const config = {
     password: env('ADMIN_PASSWORD'),
   },
 
+  /** Free trial: every new account gets this many days of Pro, one trial per email. 0 = no trial. */
+  trial: {
+    days: Number(env('TRIAL_DAYS', 30)),
+  },
+
   /** Subscription products (same IDs as in Play Console / App Store Connect). */
   products: {
     monthly: env('PRODUCT_MONTHLY', 'abhi_pro_monthly'),

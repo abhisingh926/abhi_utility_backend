@@ -4,6 +4,7 @@ Node.js + MySQL backend for the Abhi Utility app:
 
 - **Accounts** – email + password sign-up/login, refresh-token sessions, change password, **forgot password (6-digit code by email)**, delete account.
 - **Cloud backup** – the app backs up the diary + tasks (and diary photos) and restores them on any phone; last 10 backups kept per user.
+- **Free trial** – registering gives a **1-month (30-day) free trial** of Pro, once per email (Gmail dot/+ aliases count as one, and deleting the account doesn't reset it). Older accounts get theirs on next login/app start. `TRIAL_DAYS` changes the length (0 = off).
 - **Subscriptions** – verifies Google Play (and later App Store) purchases with Google/Apple, keeps them up to date through store notifications, and tells the app whether the user is **Pro**.
 - **Admin panel** (`/admin`) – stats, search users, create accounts, give/remove Pro, reset passwords, disable/delete users, history of admin actions.
 - **Web pages** – `/delete-account` (required by Google Play and the App Store) and `/reset-password`.
@@ -40,18 +41,18 @@ Authenticated calls send `Authorization: Bearer <accessToken>`. Access tokens la
 | Method | Path | Body | Notes |
 |---|---|---|---|
 | GET | `/api/health` | | uptime check |
-| POST | `/api/v1/auth/register` | `email, password, name?` | → `accessToken, refreshToken, user, entitlement` |
+| POST | `/api/v1/auth/register` | `email, password, name?` | → `accessToken, refreshToken, user, entitlement, trialStarted` (starts the free trial) |
 | POST | `/api/v1/auth/login` | `email, password` | same as register |
 | POST | `/api/v1/auth/refresh` | `refreshToken` | → new `accessToken, refreshToken` (old one stops working) |
 | POST | `/api/v1/auth/logout` | `refreshToken` | |
 | POST | `/api/v1/auth/change-password` | `currentPassword, newPassword` | logs out other devices |
 | POST | `/api/v1/auth/forgot-password` | `email` | emails a 6-digit code (valid 15 min); same answer whether the email exists or not |
 | POST | `/api/v1/auth/reset-password` | `email, code, newPassword` | → logged-in session; other devices logged out; 5 wrong codes = code dead |
-| GET | `/api/v1/me` | | `user` + `entitlement { isPro, source, productId, status, expiresAt, autoRenew }` |
+| GET | `/api/v1/me` | | `user` + `entitlement { isPro, isTrial, source, productId, status, expiresAt, autoRenew, trial { used, startedAt, endsAt } }` |
 | PATCH | `/api/v1/me` | `name` | |
 | DELETE | `/api/v1/me` | `password` | deletes the account |
 | GET | `/api/v1/me/subscriptions` | | purchase history |
-| GET | `/api/v1/plans` | | product IDs to show in the app |
+| GET | `/api/v1/plans` | | `trialDays` + product IDs to show in the app |
 | POST | `/api/v1/purchases/google` | `purchaseToken` | after a Play purchase / restore → `entitlement` |
 | POST | `/api/v1/purchases/apple` | `signedTransaction` or `transactionId` | after an App Store purchase / restore |
 | GET | `/api/v1/backups` | | list of backups (no data) + storage used |
@@ -115,7 +116,7 @@ Re-deploy without a code change: *Actions → CI / Deploy → Run workflow*. Rol
 
 ## Google Play setup (for real Android purchases)
 
-1. **Play Console** – create the app, upload a build (`.aab`) to *Internal testing*, then *Monetize → Subscriptions*: create `abhi_pro_monthly` and `abhi_pro_yearly` (or change `PRODUCT_*`), each with a base plan and price.
+1. **Play Console** – create the app, upload a build (`.aab`) to *Internal testing*, then *Monetize → Subscriptions*: create `abhi_pro_monthly` and `abhi_pro_yearly` (or change `PRODUCT_*`), each with a base plan and price. **Don't add a Play free-trial offer** – the trial comes from registering (`TRIAL_DAYS`), otherwise users would get two.
 2. **Service account** – Google Cloud Console (any project): enable **Google Play Android Developer API** → *IAM → Service accounts* → create one → *Keys → Add key → JSON*.
 3. **Give it access** – Play Console → *Users and permissions* → invite the service account's email → app permissions: *View financial data* and *Manage orders and subscriptions*.
 4. **Put the key on the server** – upload the JSON to `secrets/google-service-account.json` (keep it out of Git) or paste the whole JSON into `GOOGLE_SERVICE_ACCOUNT_JSON`.

@@ -4,6 +4,7 @@ import { ah, HttpError } from '../http.js';
 import { requireAuth } from '../middleware/auth.js';
 import { deleteAllBackups } from '../services/backups.js';
 import { entitlementFor, listSubscriptions } from '../services/entitlements.js';
+import { startTrialIfEligible } from '../services/trial.js';
 import { checkPassword, publicUser } from '../services/users.js';
 import * as v from '../validate.js';
 
@@ -12,6 +13,8 @@ meRouter.use(requireAuth);
 
 /** GET /api/v1/me -> the user and whether they are Pro. The app calls this on start. */
 meRouter.get('/', ah(async (req, res) => {
+  // Users who were already logged in before the trial existed get it here.
+  await startTrialIfEligible(req.user);
   res.json({ user: publicUser(req.user), entitlement: await entitlementFor(req.user.id) });
 }));
 
