@@ -76,7 +76,7 @@ Menu names in hPanel change from time to time; look for the closest match.
 
 1. **Create the database** – hPanel → *Databases → MySQL Databases*: create a database and user (Hostinger prefixes them, e.g. `u123456789_abhi`). Note the name, user, password; host is usually `localhost`.
 2. **Upload the code** – zip this folder **without** `node_modules`, `.env` and `server.log` (or push it to a private GitHub repo).
-3. **Create the Node.js app** – hPanel → *Websites* → your site (`purple-koala-695199.hostingersite.com`) → *Node.js* / *Deploy Node.js app*:
+3. **Create the Node.js app** – hPanel → *Websites* → your site (`palegreen-whale-996077.hostingersite.com`) → *Node.js* / *Deploy Node.js app*:
    - Upload the zip (or connect the GitHub repo).
    - Node.js version: **20** or **22** (18 is not enough).
    - Entry file: `server.js` · install/build command: `npm install` · start command: `npm start`.
@@ -86,8 +86,8 @@ Menu names in hPanel change from time to time; look for the closest match.
    - **Email** for forgot-password codes: hPanel → *Emails* → create a mailbox like `no-reply@<your domain>`, then set `SMTP_HOST=smtp.hostinger.com`, `SMTP_PORT=465`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM`.
    - **`STORAGE_DIR`** for backup photos: a folder **outside** the app folder (e.g. `/home/u123456789/abhi_storage`) – redeploying replaces the app folder and would delete the photos. Hostinger's File Manager shows your home path.
 5. **Deploy / start**, then open:
-   - `https://purple-koala-695199.hostingersite.com/api/health` → `{"ok":true,...}`
-   - `https://purple-koala-695199.hostingersite.com/admin` → log in with the admin account.
+   - `https://palegreen-whale-996077.hostingersite.com/api/health` → `{"ok":true,...}`
+   - `https://palegreen-whale-996077.hostingersite.com/admin` → log in with the admin account.
 6. **HTTPS** must be on (Hostinger's free SSL) – the app and Google/Apple webhooks need it.
 
 ## CI/CD (auto-deploy on push to `main`)
@@ -121,7 +121,7 @@ Re-deploy without a code change: *Actions → CI / Deploy → Run workflow*. Rol
 3. **Give it access** – Play Console → *Users and permissions* → invite the service account's email → app permissions: *View financial data* and *Manage orders and subscriptions*.
 4. **Put the key on the server** – upload the JSON to `secrets/google-service-account.json` (keep it out of Git) or paste the whole JSON into `GOOGLE_SERVICE_ACCOUNT_JSON`.
 5. **Real-time notifications** – Google Cloud → *Pub/Sub*: create a topic; on the topic add `google-play-developer-notifications@system.gserviceaccount.com` as **Pub/Sub Publisher**; create a **push** subscription to
-   `https://purple-koala-695199.hostingersite.com/webhooks/google?token=<GOOGLE_RTDN_TOKEN>`.
+   `https://palegreen-whale-996077.hostingersite.com/webhooks/google?token=<GOOGLE_RTDN_TOKEN>`.
    Play Console → *Monetize → Monetization setup* → enter the topic name → **Send test notification** (shows up as a `TEST` row in `store_events`).
 
 ## App Store setup (later, for the iPhone version)

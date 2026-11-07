@@ -73,7 +73,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Settings → Secrets and variables → Actions → Variables → PUBLIC_URL (optional)
-      PUBLIC_URL: ${{ vars.PUBLIC_URL || 'https://purple-koala-695199.hostingersite.com' }}
+      PUBLIC_URL: ${{ vars.PUBLIC_URL || 'https://palegreen-whale-996077.hostingersite.com' }}
     steps:
       - name: Wait for Hostinger to finish deploying
         run: |
