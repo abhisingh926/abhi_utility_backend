@@ -45,6 +45,7 @@ export function createApp() {
   app.use('/api/v1/auth/register', authLimiter);
   app.use('/api/v1/auth/forgot-password', authLimiter);
   app.use('/api/v1/auth/reset-password', authLimiter);
+  app.use('/api/v1/auth/verify-email', authLimiter); // also /verify-email/send
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/me', meRouter);
   app.use('/api/v1/plans', plansRouter);

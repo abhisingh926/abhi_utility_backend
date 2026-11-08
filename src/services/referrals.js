@@ -74,6 +74,9 @@ async function grantDays(conn, userId, days, refKey, note) {
  * things the user should be told (own code, already used a code…).
  */
 export async function applyReferral(user, referrer) {
+  if (!user.email_verified_at) {
+    throw new HttpError(403, 'Confirm your email first, then enter the referral code.', 'email_not_verified');
+  }
   if (referrer.id === user.id || trialEmailKey(referrer.email) === trialEmailKey(user.email)) {
     throw new HttpError(400, "You can't use your own referral code", 'own_referral_code');
   }

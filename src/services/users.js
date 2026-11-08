@@ -23,7 +23,9 @@ export async function createUser({ email, password, name = null, role = 'user', 
     throw new HttpError(409, 'An account with this email already exists', 'email_taken');
   }
   const result = await query(
-    'INSERT INTO users (uuid, email, password_hash, name, role, created_by_admin) VALUES (?, ?, ?, ?, ?, ?)',
+    // Accounts made by an admin count as verified; sign-ups confirm by email code.
+    `INSERT INTO users (uuid, email, password_hash, name, role, created_by_admin, email_verified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ${createdByAdmin ? 'UTC_TIMESTAMP()' : 'NULL'})`,
     [crypto.randomUUID(), email, await hashPassword(password), name, role, createdByAdmin ? 1 : 0],
   );
   return findById(result.insertId);
@@ -37,6 +39,7 @@ export function publicUser(u) {
     // purchase time, so store notifications can be matched to this account.
     accountToken: u.uuid,
     email: u.email,
+    emailVerified: !!u.email_verified_at,
     name: u.name,
     // Changes whenever the photo changes (null = no photo): GET /api/v1/me/avatar.
     avatarVersion: avatarVersion(u),

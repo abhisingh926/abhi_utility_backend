@@ -28,15 +28,30 @@ assert.ok(Array.isArray(publicPlans.products));
 
 // Sign up, log in, wrong password, duplicate email.
 const reg = await call('POST', '/api/v1/auth/register', { body: { email, password, name: 'Smoke' }, expect: 201 });
-// Registering starts the free trial (unless TRIAL_DAYS=0).
+// No trial until the email is confirmed with the emailed code.
 const trialOn = Number(process.env.TRIAL_DAYS ?? 30) > 0;
-assert.equal(reg.trialStarted, trialOn);
-assert.equal(reg.entitlement.isPro, trialOn);
+assert.equal(reg.verificationRequired, true);
+assert.equal(reg.user.emailVerified, false);
+assert.equal(reg.trialStarted, false);
+assert.equal(reg.entitlement.isPro, false);
+assert.match(reg.devCode ?? '', /^\d{6}$/, 'set EXPOSE_RESET_CODE_FOR_TESTS=true for this test');
+// Resending right away is refused; a wrong code is refused.
+await call('POST', '/api/v1/auth/verify-email/send', { token: reg.accessToken, expect: 429 });
+const badCode = reg.devCode === '000000' ? '111111' : '000000';
+await call('POST', '/api/v1/auth/verify-email', { token: reg.accessToken, body: { code: badCode }, expect: 400 });
+// The right code confirms the email and starts the free trial (unless TRIAL_DAYS=0).
+const verified = await call('POST', '/api/v1/auth/verify-email', { token: reg.accessToken, body: { code: reg.devCode } });
+assert.equal(verified.user.emailVerified, true);
+assert.equal(verified.trialStarted, trialOn);
+assert.equal(verified.entitlement.isPro, trialOn);
 if (trialOn) {
-  assert.equal(reg.entitlement.isTrial, true);
-  assert.equal(reg.entitlement.source, 'trial');
-  assert.ok(new Date(reg.entitlement.expiresAt) > new Date());
+  assert.equal(verified.entitlement.isTrial, true);
+  assert.equal(verified.entitlement.source, 'trial');
+  assert.ok(new Date(verified.entitlement.expiresAt) > new Date());
 }
+// Used codes don't work twice.
+const again = await call('POST', '/api/v1/auth/verify-email', { token: reg.accessToken, body: { code: reg.devCode } });
+assert.equal(again.trialStarted, false);
 await call('POST', '/api/v1/auth/register', { body: { email, password }, expect: 409 });
 await call('POST', '/api/v1/auth/login', { body: { email, password: 'wrong-password' }, expect: 401 });
 const login = await call('POST', '/api/v1/auth/login', { body: { email, password } });

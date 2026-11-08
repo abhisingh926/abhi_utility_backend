@@ -13,6 +13,7 @@ const trialRefHash = (userId) => sha256(`trial:${userId}`);
  */
 export async function startTrialIfEligible(user) {
   if (!(config.trial.days > 0)) return false;
+  if (!user.email_verified_at) return false; // starts once the email is confirmed
   if (await one("SELECT 1 FROM subscriptions WHERE user_id = ? AND source = 'trial' LIMIT 1", [user.id])) return false;
 
   const conn = await pool.getConnection();

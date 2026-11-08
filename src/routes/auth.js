@@ -6,7 +6,8 @@ import { ah, HttpError } from '../http.js';
 import { requireAuth } from '../middleware/auth.js';
 import { entitlementFor } from '../services/entitlements.js';
 import { passwordResetEmail, sendMail } from '../services/mailer.js';
-import { applyReferral, findReferrer } from '../services/referrals.js';
+import { markVerified, sendVerificationCode, unlockAfterVerification, VERIFY_MINUTES, verifyEmail } from '../services/email-verify.js';
+import { findReferrer } from '../services/referrals.js';
 import { startTrialIfEligible } from '../services/trial.js';
 import { revokeAllForUser, revokeRefresh, rotateRefresh, sessionFor, sha256, signAccess } from '../services/tokens.js';
 import { checkPassword, createUser, dummyCheck, findByEmail, findById, hashPassword, publicUser } from '../services/users.js';
@@ -34,19 +35,55 @@ authRouter.post('/register', ah(async (req, res) => {
   const referrer = rawCode ? await findReferrer(rawCode) : null;
 
   const user = await createUser({ email, password, name });
-  // Registering is what starts the free trial.
-  const trialStarted = await startTrialIfEligible(user);
+  // The free trial and the referral reward wait until the email is confirmed
+  // (POST /verify-email), so made-up addresses can't farm them.
   let referral = null;
   if (referrer) {
-    try {
-      referral = { applied: true, ...(await applyReferral(user, referrer)) };
-    } catch (e) {
-      // The account exists now: don't fail the sign-up over the code, just say why.
-      if (!(e instanceof HttpError)) throw e;
-      referral = { applied: false, code: e.code, message: e.message };
-    }
+    await query('UPDATE users SET pending_referrer_id = ? WHERE id = ?', [referrer.id, user.id]);
+    referral = { applied: false, pending: true, message: 'The referral code is applied after you confirm your email.' };
   }
-  res.status(201).json({ ...(await sessionResponse(user, req)), trialStarted, referral });
+  let verification;
+  try {
+    verification = await sendVerificationCode(user);
+  } catch (e) {
+    // The account exists: the app can ask for the code again (POST /verify-email/send).
+    console.error('Verification email failed', e.message);
+    verification = { sendFailed: true };
+  }
+  res.status(201).json({
+    ...(await sessionResponse(user, req)),
+    trialStarted: false,
+    referral,
+    verificationRequired: true,
+    verificationMinutes: VERIFY_MINUTES,
+    ...(verification.devCode ? { devCode: verification.devCode } : {}),
+    ...(verification.sendFailed ? { verificationSendFailed: true } : {}),
+  });
+}));
+
+/** POST /api/v1/auth/verify-email/send -> emails a new confirmation code */
+authRouter.post('/verify-email/send', requireAuth, ah(async (req, res) => {
+  const r = await sendVerificationCode(req.user);
+  res.json({
+    ok: true,
+    alreadyVerified: !!r.alreadyVerified,
+    message: r.alreadyVerified
+      ? 'Your email is already confirmed.'
+      : `A code was sent to ${req.user.email}. It expires in ${VERIFY_MINUTES} minutes.`,
+    ...(r.devCode ? { devCode: r.devCode } : {}),
+  });
+}));
+
+/** POST /api/v1/auth/verify-email { code } -> confirms the email, starts the trial */
+authRouter.post('/verify-email', requireAuth, ah(async (req, res) => {
+  const r = await verifyEmail(req.user, req.body?.code);
+  const user = await findById(req.user.id);
+  res.json({
+    user: publicUser(user),
+    entitlement: await entitlementFor(user.id),
+    trialStarted: r.trialStarted,
+    referral: r.referral,
+  });
 }));
 
 /** POST /api/v1/auth/login { email, password } */
@@ -140,7 +177,10 @@ authRouter.post('/reset-password', ah(async (req, res) => {
   await query('UPDATE password_resets SET used_at = UTC_TIMESTAMP() WHERE id = ?', [reset.id]);
   await query('UPDATE users SET password_hash = ? WHERE id = ?', [await hashPassword(newPassword), user.id]);
   await revokeAllForUser(user.id);
-  res.json(await sessionResponse(user, req));
+  // The code came by email, so the address is theirs.
+  await markVerified(user.id);
+  await unlockAfterVerification(user.id);
+  res.json(await sessionResponse(await findById(user.id), req));
 }));
 
 /** POST /api/v1/auth/change-password { currentPassword, newPassword } -> logs out other devices */

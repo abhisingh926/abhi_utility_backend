@@ -147,6 +147,19 @@ const statements = [
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
+  // Email verification: 6-digit codes sent by email (stored hashed).
+  `CREATE TABLE IF NOT EXISTS email_verifications (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    code_hash CHAR(64) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    used_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_verify_user (user_id),
+    CONSTRAINT fk_verify_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   `CREATE TABLE IF NOT EXISTS admin_actions (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     admin_id INT UNSIGNED NULL,
@@ -165,6 +178,7 @@ export async function migrate() {
   await addSubscriptionSources();
   await addReferralCodeColumn();
   await addAvatarColumns();
+  await addEmailVerification();
   await seedPlans();
 }
 
@@ -188,6 +202,25 @@ async function addReferralCodeColumn() {
      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'referral_code'`,
   );
   if (!col) await query('ALTER TABLE users ADD COLUMN referral_code CHAR(8) NULL UNIQUE AFTER role');
+}
+
+/**
+ * users.email_verified_at (+ pending_referrer_id: a referral code given at
+ * sign-up, applied once the email is verified). Accounts that existed before
+ * verification did are counted as verified, so nobody is locked out.
+ */
+async function addEmailVerification() {
+  const col = await one(
+    `SELECT 1 AS ok FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'email_verified_at'`,
+  );
+  if (!col) {
+    await query(
+      `ALTER TABLE users ADD COLUMN email_verified_at DATETIME NULL AFTER email,
+         ADD COLUMN pending_referrer_id INT UNSIGNED NULL AFTER referral_code`,
+    );
+    await query('UPDATE users SET email_verified_at = created_at WHERE email_verified_at IS NULL');
+  }
 }
 
 /** users.avatar_sha / avatar_type: the profile photo (file in STORAGE_DIR/avatars). */

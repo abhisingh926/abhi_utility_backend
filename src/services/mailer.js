@@ -53,3 +53,24 @@ If you didn't ask for this, ignore this email — your password stays the same.`
 </div>`;
   return { subject: `${code} is your ${app} password reset code`, text, html };
 }
+
+export function verificationEmail({ name, code, minutes }) {
+  const app = config.mail.appName;
+  const hello = name ? `Hi ${name},` : 'Hi,';
+  const text = `${hello}
+
+Your ${app} email confirmation code is: ${code}
+
+It expires in ${minutes} minutes. Enter it in the app to confirm your email and start your free trial.
+
+If you didn't create an ${app} account, ignore this email.`;
+  const html = `<div style="font-family:system-ui,Segoe UI,Roboto,sans-serif;max-width:480px;margin:auto;padding:24px;color:#1b1d2a">
+  <h2 style="margin:0 0 12px">${escape(app)}</h2>
+  <p>${escape(hello)}</p>
+  <p>Your email confirmation code is:</p>
+  <p style="font-size:32px;font-weight:700;letter-spacing:6px;margin:16px 0">${escape(code)}</p>
+  <p>It expires in ${minutes} minutes. Enter it in the app to confirm your email and start your free trial.</p>
+  <p style="color:#6b6f85;font-size:13px">If you didn't create an ${escape(app)} account, ignore this email.</p>
+</div>`;
+  return { subject: `${code} is your ${app} confirmation code`, text, html };
+}
