@@ -6,6 +6,7 @@ import { ah, HttpError } from '../http.js';
 import { requireAuth } from '../middleware/auth.js';
 import { entitlementFor } from '../services/entitlements.js';
 import { passwordResetEmail, sendMail } from '../services/mailer.js';
+import { applyReferral, findReferrer } from '../services/referrals.js';
 import { startTrialIfEligible } from '../services/trial.js';
 import { revokeAllForUser, revokeRefresh, rotateRefresh, sessionFor, sha256, signAccess } from '../services/tokens.js';
 import { checkPassword, createUser, dummyCheck, findByEmail, findById, hashPassword, publicUser } from '../services/users.js';
@@ -23,16 +24,29 @@ async function sessionResponse(user, req) {
   };
 }
 
-/** POST /api/v1/auth/register { email, password, name? } */
+/** POST /api/v1/auth/register { email, password, name?, referralCode? } */
 authRouter.post('/register', ah(async (req, res) => {
-  const user = await createUser({
-    email: v.email(req.body?.email),
-    password: v.password(req.body?.password),
-    name: v.optionalName(req.body?.name),
-  });
+  const email = v.email(req.body?.email);
+  const password = v.password(req.body?.password);
+  const name = v.optionalName(req.body?.name);
+  // A wrong referral code stops the sign-up, so the user can fix it (or clear it).
+  const rawCode = typeof req.body?.referralCode === 'string' ? req.body.referralCode.trim() : '';
+  const referrer = rawCode ? await findReferrer(rawCode) : null;
+
+  const user = await createUser({ email, password, name });
   // Registering is what starts the free trial.
   const trialStarted = await startTrialIfEligible(user);
-  res.status(201).json({ ...(await sessionResponse(user, req)), trialStarted });
+  let referral = null;
+  if (referrer) {
+    try {
+      referral = { applied: true, ...(await applyReferral(user, referrer)) };
+    } catch (e) {
+      // The account exists now: don't fail the sign-up over the code, just say why.
+      if (!(e instanceof HttpError)) throw e;
+      referral = { applied: false, code: e.code, message: e.message };
+    }
+  }
+  res.status(201).json({ ...(await sessionResponse(user, req)), trialStarted, referral });
 }));
 
 /** POST /api/v1/auth/login { email, password } */

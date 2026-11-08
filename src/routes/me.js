@@ -4,6 +4,7 @@ import { ah, HttpError } from '../http.js';
 import { requireAuth } from '../middleware/auth.js';
 import { deleteAllBackups } from '../services/backups.js';
 import { entitlementFor, listSubscriptions } from '../services/entitlements.js';
+import { applyLater, referralSummary } from '../services/referrals.js';
 import { startTrialIfEligible } from '../services/trial.js';
 import { checkPassword, publicUser } from '../services/users.js';
 import * as v from '../validate.js';
@@ -21,6 +22,17 @@ meRouter.get('/', ah(async (req, res) => {
 /** GET /api/v1/me/subscriptions -> purchase history */
 meRouter.get('/subscriptions', ah(async (req, res) => {
   res.json({ subscriptions: await listSubscriptions(req.user.id) });
+}));
+
+/** GET /api/v1/me/referral -> code, share link, invited friends, days earned */
+meRouter.get('/referral', ah(async (req, res) => {
+  res.json(await referralSummary(req.user));
+}));
+
+/** POST /api/v1/me/referral/apply { code } -> enter a friend's code after registering */
+meRouter.post('/referral/apply', ah(async (req, res) => {
+  const result = await applyLater(req.user, req.body?.code);
+  res.json({ ...result, referral: await referralSummary(req.user), entitlement: await entitlementFor(req.user.id) });
 }));
 
 /** PATCH /api/v1/me { name } */

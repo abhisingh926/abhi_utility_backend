@@ -36,7 +36,7 @@ const statements = [
   `CREATE TABLE IF NOT EXISTS subscriptions (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id INT UNSIGNED NULL,
-    source ENUM('google','apple','admin','trial') NOT NULL,
+    source ENUM('google','apple','admin','trial','referral') NOT NULL,
     product_id VARCHAR(150) NOT NULL,
     store_ref VARCHAR(512) NULL,
     store_ref_hash CHAR(64) NULL UNIQUE,
@@ -114,6 +114,21 @@ const statements = [
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  // Referral program: who invited whom. The email hash (normalised like the trial)
+  // stays unique after the account is deleted, so one email is rewarded only once.
+  `CREATE TABLE IF NOT EXISTS referrals (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    referrer_id INT UNSIGNED NULL,
+    referred_user_id INT UNSIGNED NULL UNIQUE,
+    referred_email_hash CHAR(64) NOT NULL UNIQUE,
+    status ENUM('rewarded','limit_reached') NOT NULL,
+    reward_days SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_referrer (referrer_id, created_at),
+    CONSTRAINT fk_ref_referrer FOREIGN KEY (referrer_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_ref_referred FOREIGN KEY (referred_user_id) REFERENCES users(id) ON DELETE SET NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   `CREATE TABLE IF NOT EXISTS admin_actions (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     admin_id INT UNSIGNED NULL,
@@ -129,16 +144,28 @@ export async function migrate() {
   for (const sql of statements) {
     await query(sql);
   }
-  await addTrialSource();
+  await addSubscriptionSources();
+  await addReferralCodeColumn();
 }
 
-/** Databases created before the free trial existed: add 'trial' to subscriptions.source. */
-async function addTrialSource() {
+const SOURCES = "ENUM('google','apple','admin','trial','referral')";
+
+/** Older databases: add 'trial' / 'referral' to subscriptions.source. */
+async function addSubscriptionSources() {
   const col = await one(
     `SELECT COLUMN_TYPE AS type FROM information_schema.COLUMNS
      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'subscriptions' AND COLUMN_NAME = 'source'`,
   );
-  if (col && !String(col.type).includes("'trial'")) {
-    await query("ALTER TABLE subscriptions MODIFY source ENUM('google','apple','admin','trial') NOT NULL");
+  if (col && !(String(col.type).includes("'trial'") && String(col.type).includes("'referral'"))) {
+    await query(`ALTER TABLE subscriptions MODIFY source ${SOURCES} NOT NULL`);
   }
+}
+
+/** users.referral_code (created lazily, unique). */
+async function addReferralCodeColumn() {
+  const col = await one(
+    `SELECT 1 AS ok FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'referral_code'`,
+  );
+  if (!col) await query('ALTER TABLE users ADD COLUMN referral_code CHAR(8) NULL UNIQUE AFTER role');
 }

@@ -5,6 +5,7 @@ Node.js + MySQL backend for the Abhi Utility app:
 - **Accounts** – email + password sign-up/login, refresh-token sessions, change password, **forgot password (6-digit code by email)**, delete account.
 - **Cloud backup** – the app backs up the diary + tasks (and diary photos) and restores them on any phone; last 10 backups kept per user.
 - **Free trial** – registering gives a **1-month (30-day) free trial** of Pro, once per email (Gmail dot/+ aliases count as one, and deleting the account doesn't reset it). Older accounts get theirs on next login/app start. `TRIAL_DAYS` changes the length (0 = off).
+- **Referral program** – every user has a code; when a new person registers with it (or enters it within 7 days), the referrer gets **+1 month of Pro**, added after the Pro time they already have. One reward per email ever (same alias rules as the trial), no self-referral, max 12 rewards per person per year (`REFERRAL_*` settings).
 - **Subscriptions** – verifies Google Play (and later App Store) purchases with Google/Apple, keeps them up to date through store notifications, and tells the app whether the user is **Pro**.
 - **Admin panel** (`/admin`) – stats, search users, create accounts, give/remove Pro, reset passwords, disable/delete users, history of admin actions.
 - **Web pages** – `/delete-account` (required by Google Play and the App Store) and `/reset-password`.
@@ -41,7 +42,7 @@ Authenticated calls send `Authorization: Bearer <accessToken>`. Access tokens la
 | Method | Path | Body | Notes |
 |---|---|---|---|
 | GET | `/api/health` | | uptime check |
-| POST | `/api/v1/auth/register` | `email, password, name?` | → `accessToken, refreshToken, user, entitlement, trialStarted` (starts the free trial) |
+| POST | `/api/v1/auth/register` | `email, password, name?, referralCode?` | → `accessToken, refreshToken, user, entitlement, trialStarted, referral` (starts the free trial; a wrong code → 400 `invalid_referral_code`) |
 | POST | `/api/v1/auth/login` | `email, password` | same as register |
 | POST | `/api/v1/auth/refresh` | `refreshToken` | → new `accessToken, refreshToken` (old one stops working) |
 | POST | `/api/v1/auth/logout` | `refreshToken` | |
@@ -52,6 +53,8 @@ Authenticated calls send `Authorization: Bearer <accessToken>`. Access tokens la
 | PATCH | `/api/v1/me` | `name` | |
 | DELETE | `/api/v1/me` | `password` | deletes the account |
 | GET | `/api/v1/me/subscriptions` | | purchase history |
+| GET | `/api/v1/me/referral` | | `code, link, rewardDays, invited, rewarded, daysEarned, friends[], referredBy, canApplyCode` |
+| POST | `/api/v1/me/referral/apply` | `code` | enter a friend's code after registering (first 7 days) |
 | GET | `/api/v1/plans` | | `trialDays` + product IDs to show in the app |
 | POST | `/api/v1/purchases/google` | `purchaseToken` | after a Play purchase / restore → `entitlement` |
 | POST | `/api/v1/purchases/apple` | `signedTransaction` or `transactionId` | after an App Store purchase / restore |
