@@ -5,7 +5,7 @@ Node.js + MySQL backend for the Abhi Utility app:
 - **Accounts** – email + password sign-up/login, refresh-token sessions, change password, **forgot password (6-digit code by email)**, delete account.
 - **Cloud backup** – the app backs up the diary + tasks (and diary photos) and restores them on any phone; last 10 backups kept per user.
 - **Free trial** – registering gives a **1-month (30-day) free trial** of Pro, once per email (Gmail dot/+ aliases count as one, and deleting the account doesn't reset it). Older accounts get theirs on next login/app start. `TRIAL_DAYS` changes the length (0 = off).
-- **Referral program** – every user has a code; when a new person registers with it (or enters it within 7 days), the referrer gets **+1 month of Pro**, added after the Pro time they already have. One reward per email ever (same alias rules as the trial), no self-referral, max 12 rewards per person per year (`REFERRAL_*` settings).
+- **Referral program** – every user has a code; when a new person registers with it (or enters it within 7 days), the referrer gets **+1 month of Pro** and the new user **+10 days** on top of the free trial, added after the Pro time they already have. One reward per email ever (same alias rules as the trial), no self-referral, max 12 rewards per person per year (`REFERRAL_*` settings).
 - **Subscriptions** – verifies Google Play (and later App Store) purchases with Google/Apple, keeps them up to date through store notifications, and tells the app whether the user is **Pro**.
 - **Admin panel** (`/admin`) – stats, search users, create accounts, give/remove Pro, reset passwords, disable/delete users, history of admin actions.
 - **Web pages** – `/delete-account` (required by Google Play and the App Store) and `/reset-password`.

@@ -44,12 +44,12 @@ export const config = {
   /**
    * Referral program: a friend registers with your code -> you get `days` more Pro.
    * At most `maxPerYear` rewards per person per 365 days. `friendDays` = extra days
-   * for the new user too (0 = only the normal free trial). New users can enter a code
+   * for the new user who registers with the code (0 = only the normal free trial). New users can enter a code
    * up to `applyWithinDays` after registering. `appUrl`: where the shared link points.
    */
   referral: {
     days: Number(env('REFERRAL_DAYS', 30)),
-    friendDays: Number(env('REFERRAL_FRIEND_DAYS', 0)),
+    friendDays: Number(env('REFERRAL_FRIEND_DAYS', 10)),
     maxPerYear: Number(env('REFERRAL_MAX_PER_YEAR', 12)),
     applyWithinDays: Number(env('REFERRAL_APPLY_DAYS', 7)),
     appUrl: env('APP_DOWNLOAD_URL', `https://play.google.com/store/apps/details?id=${env('GOOGLE_PACKAGE_NAME', 'com.abhi.abhi_utility')}`),
