@@ -5,3 +5,4 @@ secrets/
 *.log
 .DS_Store
 storage/
+.env.remote
