@@ -3,6 +3,7 @@ import { GoogleAuth } from 'google-auth-library';
 import { config } from '../config.js';
 import { HttpError } from '../http.js';
 import { findByStoreRef, logStoreEvent, upsertStoreSubscription } from './entitlements.js';
+import { rechainBonusDays } from './referrals.js';
 import { mapGoogleSubscription } from './store-mapping.js';
 import { sha256 } from './tokens.js';
 import { query } from '../db.js';
@@ -94,6 +95,8 @@ export async function syncGooglePurchase(purchaseToken, { requestingUser = null,
     expiresAt: m.expiresAt,
     raw: sub,
   });
+  // A renewal must not eat referral bonus days: move them behind the paid time.
+  await rechainBonusDays(ownerId);
 
   // Upgrade / downgrade / resubscribe: the previous token no longer gives Pro.
   if (m.linkedPurchaseToken) {

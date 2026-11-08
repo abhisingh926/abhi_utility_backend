@@ -4,6 +4,7 @@ import { AppStoreServerAPIClient, Environment, SignedDataVerifier } from '@apple
 import { config } from '../config.js';
 import { HttpError } from '../http.js';
 import { findByStoreRef, logStoreEvent, upsertStoreSubscription } from './entitlements.js';
+import { rechainBonusDays } from './referrals.js';
 import { mapAppleSubscription } from './store-mapping.js';
 import { findByUuid } from './users.js';
 
@@ -83,6 +84,8 @@ async function syncOriginal(originalTransactionId, { requestingUser = null, even
     expiresAt: m.expiresAt,
     raw: { status: last.status, transaction: tx, renewal },
   });
+  // A renewal must not eat referral bonus days: move them behind the paid time.
+  await rechainBonusDays(ownerId);
   await logStoreEvent({ source: 'apple', eventType, storeRef: originalTransactionId, payload: { status: last.status, productId: m.productId } });
   return { ...m, userId: ownerId };
 }

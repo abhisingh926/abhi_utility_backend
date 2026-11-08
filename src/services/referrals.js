@@ -1,6 +1,7 @@
 import { config } from '../config.js';
 import { one, pool, query } from '../db.js';
 import { HttpError } from '../http.js';
+import { planBonusDays } from './bonus-days.js';
 import { newReferralCode, normalizeReferralCode } from './referral-code.js';
 import { sha256 } from './tokens.js';
 import { trialEmailKey } from './trial-email.js';
@@ -194,4 +195,47 @@ export async function applyLater(user, input) {
       : new HttpError(400, `Referral codes can only be entered in the first ${config.referral.applyWithinDays} days after registering`, 'referral_too_late');
   }
   return applyReferral(user, await findReferrer(input));
+}
+
+/**
+ * Moves the user's referral bonus days behind their paid / granted Pro time
+ * (see planBonusDays). Called after every store update. Returns how many
+ * bonus rows moved.
+ */
+export async function rechainBonusDays(userId) {
+  if (!userId) return 0;
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.query('SELECT id FROM users WHERE id = ? FOR UPDATE', [userId]); // one at a time per user
+    const [[paid]] = await conn.query(
+      `SELECT MAX(expires_at) AS until, SUM(expires_at IS NULL) AS lifetime FROM subscriptions
+       WHERE user_id = ? AND source <> 'referral' AND status IN ('active','grace','cancelled')
+         AND (expires_at IS NULL OR expires_at > UTC_TIMESTAMP())`,
+      [userId],
+    );
+    let changes = [];
+    if (!(Number(paid.lifetime) > 0) && paid.until) {
+      const [rows] = await conn.query(
+        `SELECT id, starts_at, expires_at FROM subscriptions
+         WHERE user_id = ? AND source = 'referral' AND status = 'active' AND expires_at > UTC_TIMESTAMP()
+         ORDER BY starts_at, id`,
+        [userId],
+      );
+      changes = planBonusDays(
+        new Date(paid.until),
+        rows.map((r) => ({ id: r.id, startsAt: new Date(r.starts_at), expiresAt: new Date(r.expires_at) })),
+      );
+      for (const c of changes) {
+        await conn.query('UPDATE subscriptions SET starts_at = ?, expires_at = ? WHERE id = ?', [c.startsAt, c.expiresAt, c.id]);
+      }
+    }
+    await conn.commit();
+    return changes.length;
+  } catch (e) {
+    await conn.rollback().catch(() => {});
+    throw e;
+  } finally {
+    conn.release();
+  }
 }

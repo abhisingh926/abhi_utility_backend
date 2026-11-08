@@ -11,8 +11,12 @@ function required(name) {
   return v;
 }
 
+// Safe by default: only an explicit NODE_ENV=development / test turns off the
+// production checks below (a forgotten NODE_ENV on the server must not do that).
+const nodeEnv = env('NODE_ENV', 'production');
+
 export const config = {
-  env: env('NODE_ENV', 'development'),
+  env: nodeEnv,
   port: Number(env('PORT', 3000)),
   publicUrl: env('PUBLIC_URL', 'http://localhost:3000'),
 
@@ -72,7 +76,7 @@ export const config = {
   },
 
   /** Testing only (never in production): password-reset API returns the code. */
-  exposeResetCodeForTests: env('EXPOSE_RESET_CODE_FOR_TESTS') === 'true' && env('NODE_ENV') !== 'production',
+  exposeResetCodeForTests: env('EXPOSE_RESET_CODE_FOR_TESTS') === 'true' && nodeEnv !== 'production',
 
   backup: {
     /** Folder for backup photos. On Hostinger keep it OUTSIDE the app folder (redeploys replace that). */
@@ -104,6 +108,19 @@ export const config = {
   },
 };
 
-if (config.env === 'production' && config.jwt.secret.length < 32) {
-  throw new Error('JWT_SECRET must be at least 32 characters in production');
+const isLocalHost = (h) => ['localhost', '127.0.0.1', '::1', 'mysql', 'db'].includes(String(h).toLowerCase());
+
+if (config.env === 'production') {
+  if (config.jwt.secret.length < 32 || /^(replace|change|local|secret)/i.test(config.jwt.secret)) {
+    throw new Error('JWT_SECRET must be a random secret of at least 32 characters in production');
+  }
+} else if (!isLocalHost(config.db.host)) {
+  // A development config talking to a remote (probably the live) database.
+  if (config.exposeResetCodeForTests) {
+    throw new Error(
+      `EXPOSE_RESET_CODE_FOR_TESTS=true with a remote database (${config.db.host}) would let anyone ` +
+        'reset any real account: set it to false, or use a local database.',
+    );
+  }
+  console.warn(`⚠️  NODE_ENV=${config.env} but DB_HOST=${config.db.host} is not local. Careful: this may be the live database.`);
 }
