@@ -28,7 +28,25 @@ export async function sendMail({ to, subject, text, html }) {
     }
     throw new HttpError(503, 'Email is not set up on the server yet', 'mail_not_configured');
   }
-  await transporter().sendMail({ from: `"${config.mail.appName}" <${config.mail.from}>`, to, subject, text, html });
+  try {
+    await transporter().sendMail({ from: `"${config.mail.appName}" <${config.mail.from}>`, to, subject, text, html });
+  } catch (e) {
+    // The SMTP reason goes to the server log (hPanel → Node.js → Logs); the app gets a clear message.
+    console.error(
+      `[mail] sending to ${to} via ${config.mail.host}:${config.mail.port} failed:`,
+      e.code || '',
+      e.responseCode || '',
+      String(e.response || e.message).slice(0, 300),
+    );
+    transport = undefined; // reconnect next time (e.g. after the settings were fixed)
+    throw new HttpError(
+      502,
+      e.code === 'EAUTH'
+        ? 'The server could not log in to the email account (check SMTP_USER / SMTP_PASSWORD).'
+        : 'The email could not be sent. Please try again in a few minutes.',
+      'mail_failed',
+    );
+  }
 }
 
 const escape = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
