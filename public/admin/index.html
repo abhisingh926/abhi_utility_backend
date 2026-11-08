@@ -4,148 +4,236 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Abhi Utility Admin</title>
+  <meta name="color-scheme" content="light dark">
+  <title>Admin · Abhi Utility</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Icon sprite -->
+  <svg width="0" height="0" class="hidden" aria-hidden="true">
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-card" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></symbol>
+    <symbol id="i-trend" viewBox="0 0 24 24"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></symbol>
+    <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></symbol>
+  </svg>
+
   <!-- Login -->
   <main id="login-view" class="login hidden">
-    <form id="login-form" class="card login-card">
-      <h1>Abhi Utility</h1>
-      <p class="muted">Admin panel</p>
-      <label>Email <input type="email" name="email" autocomplete="username" required></label>
-      <label>Password <input type="password" name="password" autocomplete="current-password" required></label>
-      <p id="login-error" class="error"></p>
-      <button class="primary" type="submit">Log in</button>
-    </form>
+    <div class="login-wrap">
+      <span class="brand-mark">A</span>
+      <form id="login-form" class="card login-card">
+        <div class="login-head">
+          <h1>Sign in to Admin</h1>
+          <p>Abhi Utility management console</p>
+        </div>
+        <label>Email <input type="email" name="email" autocomplete="username" placeholder="you@company.com" required></label>
+        <label>Password <input type="password" name="password" autocomplete="current-password" placeholder="••••••••" required></label>
+        <p id="login-error" class="error"></p>
+        <button class="primary" type="submit">Sign in</button>
+      </form>
+      <p class="login-foot">Restricted area · admin accounts only</p>
+    </div>
   </main>
 
   <!-- Dashboard -->
-  <div id="app-view" class="hidden">
-    <header class="topbar">
-      <strong>Abhi Utility · Admin</strong>
-      <span class="spacer"></span>
-      <span id="me-email" class="muted"></span>
-      <button id="logout" class="ghost">Log out</button>
-    </header>
+  <div id="app-view" class="shell hidden">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">A</span>
+        <span>Abhi Utility<small>Admin console</small></span>
+      </div>
+      <nav class="nav">
+        <div class="nav-label">Manage</div>
+        <a href="#" class="active" aria-current="page"><svg class="icon"><use href="#i-users"/></svg>Users</a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="me">
+          <span class="avatar" id="me-avatar"></span>
+          <span class="me-text"><span id="me-email"></span><small>Administrator</small></span>
+        </div>
+        <button id="logout" type="button" title="Log out"><svg class="icon"><use href="#i-logout"/></svg><span>Log out</span></button>
+      </div>
+    </aside>
 
-    <main class="content">
-      <section class="stats" id="stats"></section>
-
-      <section class="card">
-        <div class="toolbar">
-          <input id="search" type="search" placeholder="Search email or name…">
-          <select id="filter" aria-label="Filter">
-            <option value="all">All users</option>
-            <option value="pro">Pro</option>
-            <option value="trial">Free trial</option>
-            <option value="free">Free</option>
-            <option value="admin">Admins</option>
-            <option value="disabled">Disabled</option>
-          </select>
+    <div class="main">
+      <main class="content">
+        <header class="page-head">
+          <div>
+            <h1>Users</h1>
+            <p>Manage accounts, Pro access and subscriptions.</p>
+          </div>
           <span class="spacer"></span>
-          <button id="new-user" class="primary">+ New user</button>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr><th>Email</th><th>Name</th><th>Plan</th><th>Role</th><th>Status</th><th>Created</th><th>Last login</th></tr>
-            </thead>
-            <tbody id="users"></tbody>
-          </table>
-        </div>
-        <div class="pager">
-          <button id="prev" class="ghost">‹ Prev</button>
-          <span id="page-info" class="muted"></span>
-          <button id="next" class="ghost">Next ›</button>
-        </div>
-      </section>
-    </main>
+          <button id="new-user" class="primary" type="button"><svg class="icon"><use href="#i-plus"/></svg>New user</button>
+        </header>
+
+        <section class="stats" id="stats" aria-label="Overview"></section>
+
+        <section class="card table-card">
+          <div class="toolbar">
+            <div class="search">
+              <svg class="icon"><use href="#i-search"/></svg>
+              <input id="search" type="search" placeholder="Search by email or name" aria-label="Search users">
+            </div>
+            <select id="filter" aria-label="Filter">
+              <option value="all">All users</option>
+              <option value="pro">Pro</option>
+              <option value="trial">Free trial</option>
+              <option value="free">Free</option>
+              <option value="admin">Admins</option>
+              <option value="disabled">Disabled</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>User</th><th>Plan</th><th>Role</th><th>Status</th><th>Created</th><th>Last login</th></tr>
+              </thead>
+              <tbody id="users"></tbody>
+            </table>
+          </div>
+          <div class="pager">
+            <span id="page-info" class="muted"></span>
+            <button id="prev" class="ghost sm" type="button"><svg class="icon"><use href="#i-left"/></svg>Previous</button>
+            <button id="next" class="ghost sm" type="button">Next<svg class="icon"><use href="#i-right"/></svg></button>
+          </div>
+        </section>
+      </main>
+    </div>
   </div>
 
   <!-- New user -->
-  <dialog id="new-user-dialog">
-    <form id="new-user-form" method="dialog" class="dialog-body">
-      <h2>New user</h2>
-      <label>Email <input type="email" name="email" required></label>
-      <label>Name <input type="text" name="name" maxlength="100"></label>
-      <label>Password
-        <span class="row">
-          <input type="text" name="password" minlength="8" required>
-          <button type="button" id="gen-password" class="ghost">Generate</button>
-        </span>
-      </label>
-      <label>Role
-        <select name="role"><option value="user">User</option><option value="admin">Admin</option></select>
-      </label>
-      <label>Give Pro
-        <select name="proDays">
-          <option value="">No</option>
-          <option value="7">7 days</option>
-          <option value="30">30 days</option>
-          <option value="90">90 days</option>
-          <option value="365">1 year</option>
-          <option value="lifetime">Lifetime</option>
-        </select>
-      </label>
-      <p class="error" id="new-user-error"></p>
-      <div class="actions">
+  <dialog id="new-user-dialog" aria-labelledby="nu-title">
+    <form id="new-user-form" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <h2 id="nu-title">Create user</h2>
+          <p>The user can sign in to the app with these details.</p>
+        </div>
+        <span class="spacer"></span>
+        <button type="button" class="icon-btn" data-close aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="dialog-body">
+        <label>Email <input type="email" name="email" placeholder="name@example.com" required></label>
+        <label>Name <input type="text" name="name" maxlength="100" placeholder="Optional"></label>
+        <label>Password
+          <span class="input-group">
+            <input type="text" name="password" minlength="8" required>
+            <button type="button" id="gen-password" class="ghost" title="Generate a new password"><svg class="icon"><use href="#i-refresh"/></svg>Generate</button>
+          </span>
+        </label>
+        <div class="grid-2">
+          <label>Role
+            <select name="role"><option value="user">User</option><option value="admin">Admin</option></select>
+          </label>
+          <label>Give Pro
+            <select name="proDays">
+              <option value="">No</option>
+              <option value="7">7 days</option>
+              <option value="30">30 days</option>
+              <option value="90">90 days</option>
+              <option value="365">1 year</option>
+              <option value="lifetime">Lifetime</option>
+            </select>
+          </label>
+        </div>
+        <p class="error" id="new-user-error"></p>
+      </div>
+      <div class="dialog-foot">
         <button type="button" class="ghost" data-close>Cancel</button>
         <button type="submit" class="primary">Create user</button>
       </div>
     </form>
   </dialog>
 
-  <!-- User details -->
-  <dialog id="user-dialog">
-    <div class="dialog-body">
-      <div class="row">
+  <!-- User details (slide-over) -->
+  <dialog id="user-dialog" class="drawer" aria-labelledby="u-title">
+    <div class="drawer-head">
+      <span class="avatar lg" id="u-avatar"></span>
+      <div class="title">
         <h2 id="u-title"></h2>
-        <span class="spacer"></span>
-        <button class="ghost" data-close>✕</button>
+        <div class="tags" id="u-tags"></div>
       </div>
-      <div id="u-summary" class="summary"></div>
+      <button class="icon-btn" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button>
+    </div>
 
-      <h3>Give Pro</h3>
-      <form id="grant-form" class="row wrap">
-        <select name="days">
-          <option value="7">7 days</option>
-          <option value="30" selected>30 days</option>
-          <option value="90">90 days</option>
-          <option value="365">1 year</option>
-          <option value="lifetime">Lifetime</option>
-        </select>
-        <input name="note" placeholder="Note (optional)" maxlength="255">
-        <button class="primary" type="submit">Give Pro</button>
-      </form>
+    <div class="drawer-body">
+      <section class="section">
+        <h3>Overview</h3>
+        <div id="u-summary" class="panel"></div>
+      </section>
 
-      <h3>Subscriptions</h3>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Source</th><th>Product</th><th>Status</th><th>Expires</th><th>Note</th><th></th></tr></thead>
-          <tbody id="u-subs"></tbody>
-        </table>
-      </div>
+      <section class="section">
+        <h3>Give Pro</h3>
+        <p class="hint">Adds an admin grant on top of any store subscription.</p>
+        <form id="grant-form" class="inline-form">
+          <select name="days" aria-label="Duration">
+            <option value="7">7 days</option>
+            <option value="30" selected>30 days</option>
+            <option value="90">90 days</option>
+            <option value="365">1 year</option>
+            <option value="lifetime">Lifetime</option>
+          </select>
+          <input name="note" placeholder="Note (optional)" maxlength="255" aria-label="Note">
+          <button class="primary" type="submit">Give Pro</button>
+        </form>
+      </section>
 
-      <h3>Account</h3>
-      <form id="reset-form" class="row wrap">
-        <input name="password" type="text" minlength="8" placeholder="New password (min 8)" required>
-        <button class="ghost" type="submit">Reset password</button>
-      </form>
-      <div class="row wrap">
-        <button id="u-toggle-status" class="ghost"></button>
-        <button id="u-toggle-role" class="ghost"></button>
-        <button id="u-delete-backups" class="ghost">Delete backups</button>
-        <span class="spacer"></span>
-        <button id="u-delete" class="danger">Delete user</button>
-      </div>
+      <section class="section">
+        <h3>Subscriptions</h3>
+        <div class="panel table-wrap">
+          <table>
+            <thead><tr><th>Source</th><th>Product</th><th>Status</th><th>Expires</th><th>Note</th><th></th></tr></thead>
+            <tbody id="u-subs"></tbody>
+          </table>
+        </div>
+      </section>
 
-      <h3>History</h3>
-      <ul id="u-actions" class="history"></ul>
+      <section class="section">
+        <h3>Access</h3>
+        <form id="reset-form" class="inline-form">
+          <input name="password" type="text" minlength="8" placeholder="New password (min 8 characters)" required aria-label="New password">
+          <button class="ghost" type="submit">Reset password</button>
+        </form>
+        <div class="row wrap">
+          <button id="u-toggle-role" class="ghost" type="button"></button>
+        </div>
+      </section>
+
+      <section class="section">
+        <h3>Danger zone</h3>
+        <div class="danger-zone">
+          <div class="dz-row">
+            <div class="dz-text"><strong>Account status</strong><span>Disabled users can't sign in.</span></div>
+            <button id="u-toggle-status" class="ghost danger-text sm" type="button"></button>
+          </div>
+          <div class="dz-row">
+            <div class="dz-text"><strong>Cloud backups</strong><span>Remove all backups and backup photos.</span></div>
+            <button id="u-delete-backups" class="ghost danger-text sm" type="button">Delete backups</button>
+          </div>
+          <div class="dz-row">
+            <div class="dz-text"><strong>Delete user</strong><span>Permanently removes the account and its data.</span></div>
+            <button id="u-delete" class="danger sm" type="button">Delete user</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h3>History</h3>
+        <ul id="u-actions" class="history"></ul>
+      </section>
     </div>
   </dialog>
 
-  <div id="toast" class="toast hidden"></div>
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <script src="app.js"></script>
 </body>
 </html>

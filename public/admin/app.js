@@ -47,6 +47,8 @@
     const t = $('#toast');
     t.textContent = msg;
     t.classList.toggle('bad', bad);
+    t.classList.add('hidden');
+    void t.offsetWidth; // restart the enter animation
     t.classList.remove('hidden');
     clearTimeout(toast.timer);
     toast.timer = setTimeout(() => t.classList.add('hidden'), 3000);
@@ -67,6 +69,29 @@
   }
 
   const badge = (text, cls = '') => el('span', { class: `badge ${cls}` }, text);
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  function icon(name) {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('class', 'icon');
+    const use = document.createElementNS(SVG_NS, 'use');
+    use.setAttribute('href', `#i-${name}`);
+    svg.append(use);
+    return svg;
+  }
+
+  function initials(name, email) {
+    const src = (name || '').trim() || (email || '').split('@')[0];
+    const parts = src.split(/[\s._-]+/).filter(Boolean);
+    return ((parts[0]?.[0] || '?') + (parts[1]?.[0] || '')).toUpperCase();
+  }
+  function avatarClass(seed) {
+    let h = 0;
+    for (const ch of String(seed)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const c = h % 5;
+    return c ? `c${c}` : '';
+  }
+  const avatar = (name, email, extra = '') => el('span', { class: `avatar ${avatarClass(email)} ${extra}` }, initials(name, email));
 
   function entitlementText(e) {
     if (!e.isPro) return e.trial && e.trial.used ? `Free · trial ended ${fmtDay(e.trial.endsAt)}` : 'Free';
@@ -94,6 +119,7 @@
       if (me.user.role !== 'admin') throw new Error('This account is not an admin');
       state.me = me.user;
       $('#me-email').textContent = me.user.email;
+      $('#me-avatar').textContent = initials(me.user.name, me.user.email);
       $('#login-view').classList.add('hidden');
       $('#app-view').classList.remove('hidden');
       await Promise.all([loadStats(), loadUsers()]);
@@ -144,17 +170,27 @@
   async function loadStats() {
     const s = await api('/admin/stats');
     const items = [
-      ['Users', s.users],
-      ['Pro now', s.pro],
-      ['On free trial', s.onTrial],
-      ['Paying (store)', s.paying],
-      ['New this week', s.newThisWeek],
-      ['Disabled', s.disabled],
+      ['Total users', s.users, 'users', ''],
+      ['Pro now', s.pro, 'star', 'green'],
+      ['On free trial', s.onTrial, 'clock', 'teal'],
+      ['Paying (store)', s.paying, 'card', 'green'],
+      ['New this week', s.newThisWeek, 'trend', 'amber'],
+      ['Disabled', s.disabled, 'ban', 'red'],
     ];
     $('#stats').replaceChildren(
-      ...items.map(([label, value]) => el('div', { class: 'stat' }, el('div', { class: 'value' }, String(value)), el('div', { class: 'label' }, label))),
+      ...items.map(([label, value, ic, tone]) =>
+        el(
+          'div',
+          { class: 'stat' },
+          el('div', { class: 'stat-top' }, el('div', { class: 'label' }, label), el('span', { class: `stat-icon ${tone}` }, icon(ic))),
+          el('div', { class: 'value' }, Number(value ?? 0).toLocaleString()),
+        ),
+      ),
     );
   }
+
+  const statusEl = (status) =>
+    el('span', { class: `status ${status === 'active' ? '' : 'off'}` }, el('span', { class: 'dot' }), status === 'active' ? 'Active' : 'Disabled');
 
   async function loadUsers() {
     const q = encodeURIComponent($('#search').value.trim());
@@ -166,18 +202,28 @@
       el(
         'tr',
         { class: 'clickable', onclick: () => openUser(u.id) },
-        el('td', {}, u.email),
-        el('td', {}, u.name || '—'),
+        el(
+          'td',
+          {},
+          el(
+            'div',
+            { class: 'user-cell' },
+            avatar(u.name, u.email),
+            el('div', { class: 'who' }, el('strong', {}, u.name || u.email.split('@')[0]), el('span', {}, u.email)),
+          ),
+        ),
         el('td', {}, u.isPro ? badge('Pro', 'pro') : u.onTrial ? badge('Trial', 'trial') : badge('Free')),
         el('td', {}, u.role === 'admin' ? badge('Admin', 'admin') : 'User'),
-        el('td', {}, u.status === 'active' ? 'Active' : badge('Disabled', 'disabled')),
-        el('td', {}, fmtDay(u.createdAt)),
-        el('td', {}, fmtDate(u.lastLoginAt)),
+        el('td', {}, statusEl(u.status)),
+        el('td', { class: 'dim' }, fmtDay(u.createdAt)),
+        el('td', { class: 'dim' }, fmtDate(u.lastLoginAt)),
       ),
     );
-    $('#users').replaceChildren(...(rows.length ? rows : [el('tr', {}, el('td', { class: 'empty', colspan: '7' }, 'No users found'))]));
+    $('#users').replaceChildren(...(rows.length ? rows : [el('tr', {}, el('td', { class: 'empty', colspan: '6' }, 'No users match your search'))]));
     const pages = Math.max(1, Math.ceil(state.total / state.pageSize));
-    $('#page-info').textContent = `Page ${state.page} of ${pages} · ${state.total} users`;
+    const from = state.total ? (state.page - 1) * state.pageSize + 1 : 0;
+    const to = Math.min(state.page * state.pageSize, state.total);
+    $('#page-info').textContent = `Showing ${from}–${to} of ${state.total.toLocaleString()} users`;
     $('#prev').disabled = state.page <= 1;
     $('#next').disabled = state.page >= pages;
   }
@@ -244,17 +290,26 @@
   function renderUser() {
     const { user, entitlement, subscriptions, actions, backup } = state.current;
     const self = user.id === state.me.id;
-    $('#u-title').textContent = user.email;
+    $('#u-title').textContent = user.name ? `${user.name}` : user.email;
+    const av = $('#u-avatar');
+    av.className = `avatar lg ${avatarClass(user.email)}`;
+    av.textContent = initials(user.name, user.email);
+    $('#u-tags').replaceChildren(
+      ...[
+        user.name ? el('span', { class: 'muted' }, user.email) : null,
+        entitlement.isPro ? (entitlement.isTrial ? badge('Trial', 'trial') : badge('Pro', 'pro')) : badge('Free'),
+        user.role === 'admin' ? badge('Admin', 'admin') : null,
+        user.status !== 'active' ? badge('Disabled', 'disabled') : null,
+      ].filter(Boolean),
+    );
 
     const dl = el('dl', { class: 'summary' });
-    const add = (k, v) => dl.append(el('dt', {}, k), el('dd', {}, v));
+    const add = (k, v, cls) => dl.append(el('dt', {}, k), el('dd', cls ? { class: cls } : {}, v));
     add('Name', user.name || '—');
     add('Plan', entitlementText(entitlement));
-    add('Role', user.role);
-    add('Status', user.status);
     add('Created', `${fmtDate(user.createdAt)}${user.createdByAdmin ? ' (by admin)' : ''}`);
     add('Last login', fmtDate(user.lastLoginAt));
-    add('Account token', user.accountToken);
+    add('Account token', user.accountToken, 'mono');
     const mb = (b) => `${(b / 1024 / 1024).toFixed(1)} MB`;
     add(
       'Cloud backup',
@@ -273,14 +328,14 @@
               {},
               el('td', {}, s.source),
               el('td', {}, s.product_id),
-              el('td', {}, s.status),
+              el('td', {}, badge(s.status, s.status === 'active' ? 'pro' : '')),
               el('td', {}, s.expires_at ? fmtDate(s.expires_at) : 'never'),
               el('td', {}, s.note || ''),
               el(
                 'td',
                 {},
                 (s.source === 'admin' || s.source === 'trial') && s.status === 'active'
-                  ? el('button', { class: 'ghost', onclick: () => revoke(s.id, s.source) }, s.source === 'trial' ? 'End trial' : 'Revoke')
+                  ? el('button', { class: 'ghost danger-text sm', type: 'button', onclick: () => revoke(s.id, s.source) }, s.source === 'trial' ? 'End trial' : 'Revoke')
                   : '',
               ),
             ),
@@ -298,8 +353,15 @@
 
     $('#u-actions').replaceChildren(
       ...(actions.length
-        ? actions.map((a) => el('li', {}, `${fmtDate(a.created_at)} · ${a.action.replace('_', ' ')} · by ${a.admin_email || 'deleted admin'}`))
-        : [el('li', {}, 'No admin changes yet')]),
+        ? actions.map((a) =>
+            el(
+              'li',
+              {},
+              el('span', { class: 'when' }, fmtDate(a.created_at)),
+              `${a.action.replaceAll('_', ' ')} · by ${a.admin_email || 'deleted admin'}`,
+            ),
+          )
+        : [el('li', { class: 'none' }, 'No admin changes yet')]),
     );
   }
 
