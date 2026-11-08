@@ -44,6 +44,37 @@ assert.equal(login.trialStarted, false); // only one trial
 await call('GET', '/api/v1/me', { expect: 401 });
 const me = await call('GET', '/api/v1/me', { token: login.accessToken });
 assert.equal(me.user.email, email);
+assert.equal(me.user.avatarVersion, null);
+
+// Profile photo: upload (raw bytes), read back, reject non-images, remove.
+async function raw(method, path, { token, bytes, expect = 200 } = {}) {
+  const res = await fetch(BASE + path, {
+    method,
+    headers: { 'Content-Type': 'application/octet-stream', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: bytes,
+  });
+  assert.equal(res.status, expect, `${method} ${path} -> ${res.status}`);
+  console.log(`✔ ${++step}. ${method} ${path} -> ${res.status}`);
+  return res;
+}
+const png = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+await raw('GET', '/api/v1/me/avatar', { token: login.accessToken, expect: 404 });
+await raw('PUT', '/api/v1/me/avatar', { bytes: png, expect: 401 });
+await raw('PUT', '/api/v1/me/avatar', { token: login.accessToken, bytes: Buffer.from('<svg/>'), expect: 400 });
+await raw('PUT', '/api/v1/me/avatar', { token: login.accessToken, bytes: Buffer.alloc(3 * 1024 * 1024, 0xff), expect: 413 });
+const uploaded = await (await raw('PUT', '/api/v1/me/avatar', { token: login.accessToken, bytes: png })).json();
+assert.match(uploaded.user.avatarVersion, /^[a-f0-9]{16}$/);
+const got = await raw('GET', '/api/v1/me/avatar', { token: login.accessToken });
+assert.equal(got.headers.get('content-type'), 'image/png');
+assert.ok(Buffer.from(await got.arrayBuffer()).equals(png));
+assert.equal((await call('GET', '/api/v1/me', { token: login.accessToken })).user.avatarVersion, uploaded.user.avatarVersion);
+const removed = await call('DELETE', '/api/v1/me/avatar', { token: login.accessToken });
+assert.equal(removed.user.avatarVersion, null);
+await raw('GET', '/api/v1/me/avatar', { token: login.accessToken, expect: 404 });
+await raw('PUT', '/api/v1/me/avatar', { token: login.accessToken, bytes: png }); // kept for the admin checks below
 
 // Refresh-token rotation; reusing an old refresh token ends all sessions.
 const r1 = await call('POST', '/api/v1/auth/refresh', { body: { refreshToken: login.refreshToken } });
@@ -59,6 +90,13 @@ const admin = await call('POST', '/api/v1/auth/login', {
 });
 const stats = await call('GET', '/api/v1/admin/stats', { token: admin.accessToken });
 assert.ok(stats.users >= 2);
+
+// Admin sees and can remove a user's profile photo.
+const avatarPath = `/api/v1/admin/users/${me.user.id}/avatar`;
+await raw('GET', avatarPath, { token: login.accessToken, expect: 403 });
+await raw('GET', avatarPath, { token: admin.accessToken });
+await call('DELETE', avatarPath, { token: admin.accessToken });
+await raw('GET', avatarPath, { token: admin.accessToken, expect: 404 });
 
 // Plans: admin creates / edits / hides / deletes; the public list follows.
 const planId = `smoke_plan_${Date.now()}`;

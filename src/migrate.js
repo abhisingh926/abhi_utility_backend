@@ -164,6 +164,7 @@ export async function migrate() {
   }
   await addSubscriptionSources();
   await addReferralCodeColumn();
+  await addAvatarColumns();
   await seedPlans();
 }
 
@@ -187,4 +188,17 @@ async function addReferralCodeColumn() {
      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'referral_code'`,
   );
   if (!col) await query('ALTER TABLE users ADD COLUMN referral_code CHAR(8) NULL UNIQUE AFTER role');
+}
+
+/** users.avatar_sha / avatar_type: the profile photo (file in STORAGE_DIR/avatars). */
+async function addAvatarColumns() {
+  const col = await one(
+    `SELECT 1 AS ok FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'avatar_sha'`,
+  );
+  if (!col) {
+    await query(
+      'ALTER TABLE users ADD COLUMN avatar_sha CHAR(64) NULL AFTER name, ADD COLUMN avatar_type VARCHAR(20) NULL AFTER avatar_sha',
+    );
+  }
 }

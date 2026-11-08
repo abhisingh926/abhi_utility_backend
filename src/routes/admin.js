@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { one, query } from '../db.js';
 import { ah, HttpError } from '../http.js';
 import { requireAdmin } from '../middleware/auth.js';
+import { deleteAvatar, sendAvatar } from '../services/avatars.js';
 import { deleteAllBackups, usageFor } from '../services/backups.js';
 import { entitlementFor, listSubscriptions, PRO_SQL, proSql } from '../services/entitlements.js';
 import { createPlan, deletePlan, plansWithStats, updatePlan } from '../services/plans.js';
@@ -146,6 +147,19 @@ adminRouter.delete('/users/:id/backups', ah(async (req, res) => {
   res.json({ ok: true });
 }));
 
+/** GET /api/v1/admin/users/:id/avatar -> the user's profile photo (404 = none) */
+adminRouter.get('/users/:id/avatar', ah(async (req, res) => {
+  await sendAvatar(res, await targetUser(req));
+}));
+
+/** DELETE /api/v1/admin/users/:id/avatar -> removes an unsuitable profile photo */
+adminRouter.delete('/users/:id/avatar', ah(async (req, res) => {
+  const user = await targetUser(req);
+  await deleteAvatar(user);
+  await logAction(req, user.id, 'remove_avatar');
+  res.json({ ok: true });
+}));
+
 /** PATCH /api/v1/admin/users/:id { name?, role?, status? } */
 adminRouter.patch('/users/:id', ah(async (req, res) => {
   const user = await targetUser(req);
@@ -214,6 +228,7 @@ adminRouter.delete('/users/:id', ah(async (req, res) => {
   const user = await targetUser(req);
   notSelf(req, user, 'delete');
   await deleteAllBackups(user);
+  await deleteAvatar(user);
   await query('DELETE FROM users WHERE id = ?', [user.id]);
   await logAction(req, null, 'delete_user', { id: user.id, email: user.email });
   res.json({ ok: true });

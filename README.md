@@ -7,7 +7,7 @@ Node.js + MySQL backend for the Abhi Utility app:
 - **Free trial** – registering gives a **1-month (30-day) free trial** of Pro, once per email (Gmail dot/+ aliases count as one, and deleting the account doesn't reset it). Older accounts get theirs on next login/app start. `TRIAL_DAYS` changes the length (0 = off).
 - **Referral program** – every user has a code; when a new person registers with it (or enters it within 7 days), the referrer gets **+1 month of Pro** and the new user **+10 days** on top of the free trial, added after the Pro time they already have. One reward per email ever (same alias rules as the trial), no self-referral, max 12 rewards per person per year (`REFERRAL_*` settings).
 - **Subscriptions** – verifies Google Play (and later App Store) purchases with Google/Apple, keeps them up to date through store notifications, and tells the app whether the user is **Pro**.
-- **Admin panel** (`/admin`) – stats, search users, create accounts, give/remove Pro, reset passwords, disable/delete users, history of admin actions.
+- **Admin panel** (`/admin`) – stats, search users, create accounts, give/remove Pro, reset passwords, disable/delete users, see / remove profile photos, history of admin actions.
 - **Plans** (`/admin` → *Plans*) – create and edit the subscription plans the app shows: name, Play product ID, billing period, amount, currency, label (e.g. "Best value"), description, order, shown/hidden. Shows paying subscribers and estimated revenue per plan, and a history of plan changes. The two default plans (`PRODUCT_MONTHLY` / `PRODUCT_YEARLY`) are created on first start without an amount: fill it in.
   - The amount **charged** is set in Play Console (and App Store Connect); the app shows the store's price on the buy button. The amount in the admin panel is used for the revenue figures, so keep it the same as in the store. A plan's product ID can't be changed once created; plans someone bought can be hidden but not deleted.
 - **Web pages** – `/delete-account` (required by Google Play and the App Store) and `/reset-password`.
@@ -53,6 +53,8 @@ Authenticated calls send `Authorization: Bearer <accessToken>`. Access tokens la
 | POST | `/api/v1/auth/reset-password` | `email, code, newPassword` | → logged-in session; other devices logged out; 5 wrong codes = code dead |
 | GET | `/api/v1/me` | | `user` + `entitlement { isPro, isTrial, source, productId, status, expiresAt, autoRenew, trial { used, startedAt, endsAt } }` |
 | PATCH | `/api/v1/me` | `name` | |
+| PUT | `/api/v1/me/avatar` | raw image bytes (JPEG, PNG or WebP, max 2 MB) | profile photo → `user` (`avatarVersion` changes with every new photo; null = no photo) |
+| GET · DELETE | `/api/v1/me/avatar` | | the photo (404 = none) · remove it. Stored in `STORAGE_DIR/avatars/`, deleted with the account |
 | DELETE | `/api/v1/me` | `password` | deletes the account |
 | GET | `/api/v1/me/subscriptions` | | purchase history |
 | GET | `/api/v1/me/referral` | | `code, link, rewardDays, invited, rewarded, daysEarned, friends[], referredBy, canApplyCode` |

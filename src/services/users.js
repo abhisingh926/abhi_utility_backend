@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { one, query } from '../db.js';
 import { HttpError } from '../http.js';
+import { avatarVersion } from './avatars.js';
 
 const BCRYPT_ROUNDS = 11;
 
@@ -37,6 +38,8 @@ export function publicUser(u) {
     accountToken: u.uuid,
     email: u.email,
     name: u.name,
+    // Changes whenever the photo changes (null = no photo): GET /api/v1/me/avatar.
+    avatarVersion: avatarVersion(u),
     role: u.role,
     status: u.status,
     createdAt: u.created_at,

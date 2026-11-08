@@ -295,6 +295,8 @@
     const av = $('#u-avatar');
     av.className = `avatar lg ${avatarClass(user.email)}`;
     av.textContent = initials(user.name, user.email);
+    showPhoto(user);
+    $('#u-remove-avatar').disabled = !user.avatarVersion;
     $('#u-tags').replaceChildren(
       ...[
         user.name ? el('span', { class: 'muted' }, user.email) : null,
@@ -366,6 +368,24 @@
     );
   }
 
+  /** Replaces the initials with the user's photo (loaded with the admin's token). */
+  let photoUrl = null;
+  async function showPhoto(user) {
+    if (photoUrl) URL.revokeObjectURL(photoUrl);
+    photoUrl = null;
+    if (!user.avatarVersion) return;
+    try {
+      const res = await fetch(`/api/v1/admin/users/${user.id}/avatar`, {
+        headers: { Authorization: `Bearer ${store.getItem('accessToken') || ''}` },
+      });
+      if (!res.ok || state.current?.user.id !== user.id) return;
+      photoUrl = URL.createObjectURL(await res.blob());
+      $('#u-avatar').replaceChildren(el('img', { src: photoUrl, alt: '' }));
+    } catch {
+      /* keep the initials */
+    }
+  }
+
   async function act(fn, okMsg) {
     try {
       await fn();
@@ -415,6 +435,12 @@
     const role = u.role === 'admin' ? 'user' : 'admin';
     if (role === 'admin' && !confirm(`Give ${u.email} full admin access?`)) return;
     act(() => api(`/admin/users/${u.id}`, { method: 'PATCH', body: { role } }), 'Role changed');
+  });
+
+  $('#u-remove-avatar').addEventListener('click', () => {
+    const u = state.current.user;
+    if (!confirm(`Remove the profile photo of ${u.email}?`)) return;
+    act(() => api(`/admin/users/${u.id}/avatar`, { method: 'DELETE' }), 'Photo removed');
   });
 
   $('#u-delete-backups').addEventListener('click', () => {

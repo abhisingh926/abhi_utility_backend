@@ -22,7 +22,7 @@ export function createApp() {
   app.use(
     helmet({
       contentSecurityPolicy: {
-        directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'"], imgSrc: ["'self'", 'data:'] },
+        directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'"], imgSrc: ["'self'", 'data:', 'blob:'] }, // blob: profile photos in /admin
       },
     }),
   );
@@ -67,6 +67,9 @@ export function createApp() {
   app.use((err, req, res, next) => {
     if (err instanceof HttpError) {
       return res.status(err.status).json({ error: { code: err.code, message: err.message } });
+    }
+    if (err.type === 'entity.too.large') {
+      return res.status(413).json({ error: { code: 'too_large', message: 'The upload is too large' } });
     }
     if (err.type === 'entity.parse.failed') {
       return res.status(400).json({ error: { code: 'invalid_json', message: 'Request body is not valid JSON' } });
