@@ -4,6 +4,7 @@ import { ah, HttpError } from '../http.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { deleteAllBackups, usageFor } from '../services/backups.js';
 import { entitlementFor, listSubscriptions, PRO_SQL, proSql } from '../services/entitlements.js';
+import { createPlan, deletePlan, plansWithStats, updatePlan } from '../services/plans.js';
 import { revokeAllForUser } from '../services/tokens.js';
 import { createUser, findById, hashPassword, publicUser } from '../services/users.js';
 import * as v from '../validate.js';
@@ -216,4 +217,47 @@ adminRouter.delete('/users/:id', ah(async (req, res) => {
   await query('DELETE FROM users WHERE id = ?', [user.id]);
   await logAction(req, null, 'delete_user', { id: user.id, email: user.email });
   res.json({ ok: true });
+}));
+
+// ---- Subscription plans -----------------------------------------------------------
+
+/** GET /api/v1/admin/plans -> every plan with subscribers and estimated revenue */
+adminRouter.get('/plans', ah(async (req, res) => {
+  res.json(await plansWithStats());
+}));
+
+/** POST /api/v1/admin/plans { productId, name, period, price?, currency?, description?, badge?, active?, sortOrder? } */
+adminRouter.post('/plans', ah(async (req, res) => {
+  const plan = await createPlan(req.body);
+  await logAction(req, null, 'create_plan', plan);
+  res.status(201).json({ plan });
+}));
+
+/** PATCH /api/v1/admin/plans/:id { any of the fields above except productId } */
+adminRouter.patch('/plans/:id', ah(async (req, res) => {
+  const { before, after } = await updatePlan(req.params.id, req.body);
+  const changed = Object.fromEntries(
+    Object.keys(after)
+      .filter((k) => !['updatedAt', 'createdAt'].includes(k) && after[k] !== before[k])
+      .map((k) => [k, { from: before[k], to: after[k] }]),
+  );
+  await logAction(req, null, 'update_plan', { productId: after.productId, changed });
+  res.json({ plan: after });
+}));
+
+/** DELETE /api/v1/admin/plans/:id -> only plans nobody has bought */
+adminRouter.delete('/plans/:id', ah(async (req, res) => {
+  const plan = await deletePlan(req.params.id);
+  await logAction(req, null, 'delete_plan', { productId: plan.productId, name: plan.name });
+  res.json({ ok: true });
+}));
+
+/** GET /api/v1/admin/plans/history -> recent plan changes (who changed what) */
+adminRouter.get('/plans/history', ah(async (req, res) => {
+  const rows = await query(
+    `SELECT a.action, a.details, a.created_at, adm.email AS admin_email
+     FROM admin_actions a LEFT JOIN users adm ON adm.id = a.admin_id
+     WHERE a.action IN ('create_plan','update_plan','delete_plan') ORDER BY a.id DESC LIMIT 30`,
+  );
+  res.json({ history: rows });
 }));

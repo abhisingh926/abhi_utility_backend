@@ -19,11 +19,12 @@ async function call(method, path, { token, body, expect = 200 } = {}) {
   return data;
 }
 
-const email = `smoke+${Date.now()}@example.com`;
+const email = `smoke-${Date.now()}@example.com`; // no "+": aliases share one free trial
 const password = 'SmokeTest#12345';
 
 await call('GET', '/api/health');
-await call('GET', '/api/v1/plans');
+const publicPlans = await call('GET', '/api/v1/plans');
+assert.ok(Array.isArray(publicPlans.products));
 
 // Sign up, log in, wrong password, duplicate email.
 const reg = await call('POST', '/api/v1/auth/register', { body: { email, password, name: 'Smoke' }, expect: 201 });
@@ -58,6 +59,35 @@ const admin = await call('POST', '/api/v1/auth/login', {
 });
 const stats = await call('GET', '/api/v1/admin/stats', { token: admin.accessToken });
 assert.ok(stats.users >= 2);
+
+// Plans: admin creates / edits / hides / deletes; the public list follows.
+const planId = `smoke_plan_${Date.now()}`;
+const planBody = { productId: planId, name: 'Smoke plan', period: 'quarter', price: 249, currency: 'inr', badge: 'Test' };
+await call('POST', '/api/v1/admin/plans', { token: login.accessToken, body: planBody, expect: 403 });
+const newPlan = await call('POST', '/api/v1/admin/plans', { token: admin.accessToken, body: planBody, expect: 201 });
+assert.equal(newPlan.plan.currency, 'INR');
+assert.equal(newPlan.plan.price, 249);
+await call('POST', '/api/v1/admin/plans', { token: admin.accessToken, body: planBody, expect: 409 });
+await call('POST', '/api/v1/admin/plans', { token: admin.accessToken, body: { ...planBody, productId: 'Bad ID!' }, expect: 400 });
+await call('POST', '/api/v1/admin/plans', { token: admin.accessToken, body: { ...planBody, productId: `${planId}_x`, price: -1 }, expect: 400 });
+let shownPlans = await call('GET', '/api/v1/plans');
+const shown = shownPlans.products.find((p) => p.id === planId);
+assert.equal(shown?.name, 'Smoke plan');
+assert.equal(shown.period, 'quarter');
+const planPath = `/api/v1/admin/plans/${newPlan.plan.id}`;
+await call('PATCH', planPath, { token: admin.accessToken, body: { productId: 'other_id' }, expect: 400 });
+const edited = await call('PATCH', planPath, { token: admin.accessToken, body: { price: 299.5, active: false } });
+assert.equal(edited.plan.price, 299.5);
+shownPlans = await call('GET', '/api/v1/plans');
+assert.ok(!shownPlans.products.some((p) => p.id === planId)); // hidden plans aren't offered
+const adminPlans = await call('GET', '/api/v1/admin/plans', { token: admin.accessToken });
+const listedPlan = adminPlans.plans.find((p) => p.productId === planId);
+assert.equal(listedPlan.subscribers.active, 0);
+assert.equal(listedPlan.revenuePerMonth, 0);
+const planHistory = await call('GET', '/api/v1/admin/plans/history', { token: admin.accessToken });
+assert.ok(planHistory.history.some((h) => h.action === 'update_plan'));
+await call('DELETE', planPath, { token: admin.accessToken });
+await call('DELETE', planPath, { token: admin.accessToken, expect: 404 });
 const list = await call('GET', `/api/v1/admin/users?q=${encodeURIComponent(email)}`, { token: admin.accessToken });
 assert.equal(list.users.length, 1);
 const id = list.users[0].id;
@@ -93,7 +123,7 @@ await call('PATCH', `/api/v1/admin/users/${admin.user.id}`, { token: admin.acces
 // Admin-created account, password reset.
 const created = await call('POST', '/api/v1/admin/users', {
   token: admin.accessToken,
-  body: { email: `smoke-admin-made+${Date.now()}@example.com`, password: 'Created#12345', proDays: 7 },
+  body: { email: `smoke-admin-made-${Date.now()}@example.com`, password: 'Created#12345', proDays: 7 },
   expect: 201,
 });
 assert.equal(created.entitlement.isPro, true);

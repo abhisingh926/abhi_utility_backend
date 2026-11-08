@@ -8,6 +8,8 @@ Node.js + MySQL backend for the Abhi Utility app:
 - **Referral program** – every user has a code; when a new person registers with it (or enters it within 7 days), the referrer gets **+1 month of Pro** and the new user **+10 days** on top of the free trial, added after the Pro time they already have. One reward per email ever (same alias rules as the trial), no self-referral, max 12 rewards per person per year (`REFERRAL_*` settings).
 - **Subscriptions** – verifies Google Play (and later App Store) purchases with Google/Apple, keeps them up to date through store notifications, and tells the app whether the user is **Pro**.
 - **Admin panel** (`/admin`) – stats, search users, create accounts, give/remove Pro, reset passwords, disable/delete users, history of admin actions.
+- **Plans** (`/admin` → *Plans*) – create and edit the subscription plans the app shows: name, Play product ID, billing period, amount, currency, label (e.g. "Best value"), description, order, shown/hidden. Shows paying subscribers and estimated revenue per plan, and a history of plan changes. The two default plans (`PRODUCT_MONTHLY` / `PRODUCT_YEARLY`) are created on first start without an amount: fill it in.
+  - The amount **charged** is set in Play Console (and App Store Connect); the app shows the store's price on the buy button. The amount in the admin panel is used for the revenue figures, so keep it the same as in the store. A plan's product ID can't be changed once created; plans someone bought can be hidden but not deleted.
 - **Web pages** – `/delete-account` (required by Google Play and the App Store) and `/reset-password`.
 
 Tables are created automatically on start; the first admin comes from `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
@@ -55,7 +57,7 @@ Authenticated calls send `Authorization: Bearer <accessToken>`. Access tokens la
 | GET | `/api/v1/me/subscriptions` | | purchase history |
 | GET | `/api/v1/me/referral` | | `code, link, rewardDays, invited, rewarded, daysEarned, friends[], referredBy, canApplyCode` |
 | POST | `/api/v1/me/referral/apply` | `code` | enter a friend's code after registering (first 7 days) |
-| GET | `/api/v1/plans` | | `trialDays` + product IDs to show in the app |
+| GET | `/api/v1/plans` | | `trialDays` + `products[]` (`id` = store product ID, `name, description, badge, period, price, currency`), shown plans only, in display order |
 | POST | `/api/v1/purchases/google` | `purchaseToken` | after a Play purchase / restore → `entitlement` |
 | POST | `/api/v1/purchases/apple` | `signedTransaction` or `transactionId` | after an App Store purchase / restore |
 | GET | `/api/v1/backups` | | list of backups (no data) + storage used |
@@ -67,6 +69,9 @@ Authenticated calls send `Authorization: Bearer <accessToken>`. Access tokens la
 | DELETE | `/api/v1/backups/:id` · `/api/v1/backups` | | delete one / all backups |
 | POST | `/webhooks/google?token=…` | Pub/Sub push | Google Play real-time notifications |
 | POST | `/webhooks/apple` | `signedPayload` | App Store Server Notifications V2 |
+| GET | `/api/v1/admin/plans` | | every plan + `subscribers { active, renewing, ever }`, `revenuePerMonth`; `totals` per currency (admins only) |
+| POST | `/api/v1/admin/plans` | `productId, name, period, price?, currency?, description?, badge?, active?, sortOrder?` | `period`: week, month, quarter, half_year, year |
+| PATCH · DELETE | `/api/v1/admin/plans/:id` | any field except `productId` | delete only works for plans nobody bought |
 | * | `/api/v1/admin/...` | | admin panel API (admins only) |
 
 **Backups are opaque to the server:** it never reads `payload` or photos, so the app can encrypt them on the phone first (`encrypted: true`) – then not even an admin can read a user's diary. The admin panel shows only backup sizes.

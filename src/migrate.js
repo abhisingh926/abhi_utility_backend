@@ -1,4 +1,5 @@
 import { one, query } from './db.js';
+import { seedPlans } from './services/plans.js';
 
 /**
  * Database schema. Every statement is safe to run again, so this runs on every
@@ -129,6 +130,23 @@ const statements = [
     CONSTRAINT fk_ref_referred FOREIGN KEY (referred_user_id) REFERENCES users(id) ON DELETE SET NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  // Subscription plans offered in the app (admin panel → Plans). The store sets the real
+  // price; [price] is the admin's copy of it, used for revenue estimates.
+  `CREATE TABLE IF NOT EXISTS plans (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    product_id VARCHAR(150) NOT NULL UNIQUE,
+    name VARCHAR(80) NOT NULL,
+    description VARCHAR(255) NULL,
+    badge VARCHAR(40) NULL,
+    billing_period ENUM('week','month','quarter','half_year','year') NOT NULL DEFAULT 'month',
+    price DECIMAL(12,2) NULL,
+    currency CHAR(3) NOT NULL DEFAULT 'INR',
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    sort_order SMALLINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
   `CREATE TABLE IF NOT EXISTS admin_actions (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     admin_id INT UNSIGNED NULL,
@@ -146,6 +164,7 @@ export async function migrate() {
   }
   await addSubscriptionSources();
   await addReferralCodeColumn();
+  await seedPlans();
 }
 
 const SOURCES = "ENUM('google','apple','admin','trial','referral')";

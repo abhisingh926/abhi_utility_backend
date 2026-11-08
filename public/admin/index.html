@@ -24,6 +24,8 @@
     <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
     <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3"/><path d="M21 9h-6a3 3 0 0 0 0 6h6z"/></symbol>
   </svg>
 
   <!-- Login -->
@@ -53,7 +55,8 @@
       </div>
       <nav class="nav">
         <div class="nav-label">Manage</div>
-        <a href="#" class="active" aria-current="page"><svg class="icon"><use href="#i-users"/></svg>Users</a>
+        <a href="#users" data-view="users" class="active" aria-current="page"><svg class="icon"><use href="#i-users"/></svg>Users</a>
+        <a href="#plans" data-view="plans"><svg class="icon"><use href="#i-tag"/></svg>Plans</a>
       </nav>
       <div class="sidebar-foot">
         <div class="me">
@@ -65,7 +68,7 @@
     </aside>
 
     <div class="main">
-      <main class="content">
+      <main class="content" id="users-view">
         <header class="page-head">
           <div>
             <h1>Users</h1>
@@ -107,8 +110,92 @@
           </div>
         </section>
       </main>
+
+      <main class="content hidden" id="plans-view">
+        <header class="page-head">
+          <div>
+            <h1>Plans</h1>
+            <p>Subscription plans shown in the app, their amounts and what they earn.</p>
+          </div>
+          <span class="spacer"></span>
+          <button id="new-plan" class="primary" type="button"><svg class="icon"><use href="#i-plus"/></svg>New plan</button>
+        </header>
+
+        <p class="notice">The amount customers are charged is set in <strong>Play Console → Monetize → Subscriptions</strong>
+          (and App Store Connect). The app shows the store's price on the buy button; the amount here is used for
+          the revenue figures, so keep it the same as in the store.</p>
+
+        <section class="stats stats-4" id="plan-stats" aria-label="Revenue"></section>
+
+        <section class="card table-card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Plan</th><th>Product ID</th><th>Billing</th><th class="num">Amount</th><th>Shown in app</th>
+                  <th class="num">Subscribers</th><th class="num">Revenue / month</th></tr>
+              </thead>
+              <tbody id="plans"></tbody>
+            </table>
+          </div>
+          <p id="unknown-products" class="hint pad hidden"></p>
+        </section>
+
+        <section class="card">
+          <h3 class="card-title">Recent plan changes</h3>
+          <ul id="plan-history" class="history pad"></ul>
+        </section>
+      </main>
     </div>
   </div>
+
+  <!-- New / edit plan -->
+  <dialog id="plan-dialog" aria-labelledby="plan-title">
+    <form id="plan-form" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <h2 id="plan-title">New plan</h2>
+          <p>Create the same subscription (same product ID) in Play Console.</p>
+        </div>
+        <span class="spacer"></span>
+        <button type="button" class="icon-btn" data-close aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="dialog-body">
+        <div class="grid-2">
+          <label>Name <input type="text" name="name" maxlength="80" placeholder="Monthly" required></label>
+          <label>Product ID
+            <input type="text" name="productId" maxlength="150" placeholder="abhi_pro_monthly" pattern="[a-z0-9][a-z0-9._]*" required>
+          </label>
+        </div>
+        <div class="grid-3">
+          <label>Billing
+            <select name="period">
+              <option value="week">Every week</option>
+              <option value="month" selected>Every month</option>
+              <option value="quarter">Every 3 months</option>
+              <option value="half_year">Every 6 months</option>
+              <option value="year">Every year</option>
+            </select>
+          </label>
+          <label>Amount <input type="number" name="price" min="0" step="0.01" placeholder="99"></label>
+          <label>Currency <input type="text" name="currency" maxlength="3" value="INR" required></label>
+        </div>
+        <div class="grid-2">
+          <label>Label <input type="text" name="badge" maxlength="40" placeholder="Best value (optional)"></label>
+          <label>Order in app <input type="number" name="sortOrder" step="1" value="0"></label>
+        </div>
+        <label>Description <input type="text" name="description" maxlength="255" placeholder="Cancel any time (optional)"></label>
+        <label class="check"><input type="checkbox" name="active" checked> Show this plan in the app</label>
+        <p class="hint" id="plan-locked-hint"></p>
+        <p class="error" id="plan-error"></p>
+      </div>
+      <div class="dialog-foot">
+        <button type="button" id="plan-delete" class="ghost danger-text">Delete plan</button>
+        <span class="spacer"></span>
+        <button type="button" class="ghost" data-close>Cancel</button>
+        <button type="submit" class="primary">Save plan</button>
+      </div>
+    </form>
+  </dialog>
 
   <!-- New user -->
   <dialog id="new-user-dialog" aria-labelledby="nu-title">
