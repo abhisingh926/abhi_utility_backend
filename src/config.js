@@ -88,6 +88,13 @@ export const config = {
     proOnly: env('BACKUP_PRO_ONLY', 'false') === 'true',
   },
 
+  /** SOS when no contact answers: location + video, shared by a private link. */
+  sos: {
+    /** Days an SOS link (and its video) is kept. */
+    linkDays: Number(env('SOS_LINK_DAYS', 30)),
+    videoMaxMb: Number(env('SOS_VIDEO_MAX_MB', 60)),
+  },
+
   google: {
     packageName: env('GOOGLE_PACKAGE_NAME', 'com.abhi.abhi_utility'),
     /** Service-account JSON: either the JSON itself or a path to the file. */

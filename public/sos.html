@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="light dark">
+  <title>SOS alert · Abhi Utility</title>
+  <link rel="stylesheet" href="/static/site.css">
+</head>
+<body class="sos-body">
+  <main class="card sos-card">
+    <div class="sos-head">
+      <span class="sos-badge">SOS</span>
+      <div>
+        <h1 id="title">Emergency alert</h1>
+        <p class="muted" id="when">Loading…</p>
+      </div>
+    </div>
+
+    <p id="error" class="message bad hidden"></p>
+
+    <section id="location" class="sos-section hidden">
+      <h2>Location</h2>
+      <p id="coords" class="muted"></p>
+      <a id="map-link" class="sos-button" target="_blank" rel="noopener noreferrer">Open in Google Maps</a>
+    </section>
+
+    <section id="no-location" class="sos-section hidden">
+      <h2>Location</h2>
+      <p class="muted">The phone could not get its location.</p>
+    </section>
+
+    <section class="sos-section" id="video-section">
+      <h2>Recording</h2>
+      <video id="video" class="hidden" controls playsinline preload="metadata"></video>
+      <p id="video-wait" class="muted">The 30-second recording is still uploading. This page checks again automatically.</p>
+      <a id="video-download" class="hidden" download>Download the video</a>
+    </section>
+
+    <p class="sos-note">If this person may be in danger, call them and contact the local emergency number (India: 112).</p>
+  </main>
+  <p class="foot">Sent by the Abhi Utility SOS feature · link expires <span id="expires">—</span></p>
+  <script src="/static/sos.js"></script>
+</body>
+</html>

@@ -160,6 +160,31 @@ const statements = [
     CONSTRAINT fk_verify_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  // SOS key per user: lets the phone upload an SOS alert without a fresh login token.
+  `CREATE TABLE IF NOT EXISTS sos_keys (
+    user_id INT UNSIGNED NOT NULL PRIMARY KEY,
+    key_hash CHAR(64) NOT NULL UNIQUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_soskey_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  // SOS alerts (no contact answered): location + video, opened by a private link token.
+  `CREATE TABLE IF NOT EXISTS sos_alerts (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    token CHAR(32) NOT NULL UNIQUE,
+    sender_name VARCHAR(100) NULL,
+    lat DECIMAL(9,6) NULL,
+    lng DECIMAL(9,6) NULL,
+    accuracy_m INT UNSIGNED NULL,
+    video_bytes INT UNSIGNED NULL,
+    video_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_sos_user (user_id),
+    INDEX idx_sos_created (created_at),
+    CONSTRAINT fk_sos_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
   `CREATE TABLE IF NOT EXISTS admin_actions (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     admin_id INT UNSIGNED NULL,

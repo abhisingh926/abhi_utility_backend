@@ -3,6 +3,7 @@ import { query } from '../db.js';
 import { ah, HttpError } from '../http.js';
 import { requireAuth } from '../middleware/auth.js';
 import { AVATAR_MAX_BYTES, deleteAvatar, saveAvatar, sendAvatar } from '../services/avatars.js';
+import { deleteUserSos } from '../services/sos.js';
 import { deleteAllBackups } from '../services/backups.js';
 import { entitlementFor, listSubscriptions } from '../services/entitlements.js';
 import { applyLater, referralSummary } from '../services/referrals.js';
@@ -71,6 +72,7 @@ meRouter.delete('/', ah(async (req, res) => {
   const ok = await checkPassword(String(req.body?.password ?? ''), req.user.password_hash);
   if (!ok) throw new HttpError(400, 'Password is wrong', 'invalid_credentials');
   await deleteAllBackups(req.user); // backup photos are files, not only rows
+  await deleteUserSos(req.user); // SOS videos too
   await deleteAvatar(req.user);
   await query('DELETE FROM users WHERE id = ?', [req.user.id]);
   res.json({ ok: true });

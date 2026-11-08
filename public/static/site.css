@@ -77,3 +77,23 @@ a:hover { text-decoration: underline; }
 .foot { font-size: 12px; color: var(--faint); margin: 0; }
 .hidden { display: none !important; }
 @media (max-width: 480px) { .card { padding: 24px 20px; } }
+
+/* SOS alert page */
+.sos-card { max-width: 560px; }
+.sos-head { display: flex; gap: 14px; align-items: center; margin-bottom: 8px; }
+.sos-head h1 { margin: 0; }
+.sos-head p { margin: 2px 0 0; font-size: 14px; }
+.sos-badge {
+  flex: none; width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center;
+  background: var(--danger); color: #fff; font-weight: 800; letter-spacing: .04em;
+}
+.sos-section { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px; }
+.sos-section h2 { font-size: 15px; margin: 0 0 8px; }
+.sos-button {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px;
+  border-radius: 8px; background: var(--primary); color: #fff; font-weight: 600;
+}
+.sos-button:hover { background: var(--primary-hover); text-decoration: none; }
+.sos-section video { width: 100%; max-height: 70vh; border-radius: 10px; background: #000; display: block; margin-bottom: 10px; }
+.sos-section video.hidden { display: none; }
+.sos-note { margin: 18px 0 0; padding: 12px 14px; border-radius: 10px; background: var(--danger-soft); color: var(--text-2); font-size: 14px; }

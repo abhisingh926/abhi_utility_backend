@@ -10,6 +10,7 @@ import { authRouter } from './routes/auth.js';
 import { backupsRouter } from './routes/backups.js';
 import { meRouter } from './routes/me.js';
 import { plansRouter, purchasesRouter } from './routes/purchases.js';
+import { sosRouter, sosVideo } from './routes/sos.js';
 import { webhooksRouter } from './routes/webhooks.js';
 
 const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
@@ -39,6 +40,15 @@ export function createApp() {
     message: { error: { code: 'rate_limited', message: 'Too many attempts. Try again in a few minutes.' } },
   });
 
+  // SOS uploads come from a key, not a login: limit them too.
+  const sosLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 40,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: { code: 'rate_limited', message: 'Too many SOS requests. Try again in a few minutes.' } },
+  });
+
   app.get('/api/health', (req, res) => res.json({ ok: true, env: config.env, time: new Date().toISOString() }));
 
   app.use('/api/v1/auth/login', authLimiter);
@@ -51,6 +61,8 @@ export function createApp() {
   app.use('/api/v1/plans', plansRouter);
   app.use('/api/v1/purchases', purchasesRouter);
   app.use('/api/v1/backups', backupsRouter);
+  app.use('/api/v1/sos/alerts', sosLimiter);
+  app.use('/api/v1/sos', sosRouter);
   app.use('/api/v1/admin', adminRouter);
   app.use('/webhooks', webhooksRouter);
 
@@ -58,6 +70,12 @@ export function createApp() {
   app.use('/admin', express.static(path.join(publicDir, 'admin')));
   app.get('/delete-account', (req, res) => res.sendFile(path.join(publicDir, 'delete-account.html')));
   app.get('/reset-password', (req, res) => res.sendFile(path.join(publicDir, 'reset-password.html')));
+  // SOS link sent by SMS to the contacts: location + video, no login.
+  app.get('/sos/:token', (req, res) => {
+    res.set('X-Robots-Tag', 'noindex');
+    res.sendFile(path.join(publicDir, 'sos.html'));
+  });
+  app.get('/sos/:token/video', sosVideo);
   app.use('/static', express.static(path.join(publicDir, 'static')));
   app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 
