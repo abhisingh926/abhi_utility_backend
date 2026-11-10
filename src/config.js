@@ -40,29 +40,12 @@ export const config = {
     password: env('ADMIN_PASSWORD'),
   },
 
-  /** Free trial: every new account gets this many days of Pro, one trial per email. 0 = no trial. */
-  trial: {
-    days: Number(env('TRIAL_DAYS', 30)),
-  },
+  // Free trial, referral rewards and SOS limits are set in the admin panel
+  // (/admin → Settings, services/settings.js); subscription products in /admin → Plans.
 
-  /**
-   * Referral program: a friend registers with your code -> you get `days` more Pro.
-   * At most `maxPerYear` rewards per person per 365 days. `friendDays` = extra days
-   * for the new user who registers with the code (0 = only the normal free trial). New users can enter a code
-   * up to `applyWithinDays` after registering. `appUrl`: where the shared link points.
-   */
+  /** Referral program: `appUrl` is where the shared invite link points. */
   referral: {
-    days: Number(env('REFERRAL_DAYS', 30)),
-    friendDays: Number(env('REFERRAL_FRIEND_DAYS', 10)),
-    maxPerYear: Number(env('REFERRAL_MAX_PER_YEAR', 12)),
-    applyWithinDays: Number(env('REFERRAL_APPLY_DAYS', 7)),
     appUrl: env('APP_DOWNLOAD_URL', `https://play.google.com/store/apps/details?id=${env('GOOGLE_PACKAGE_NAME', 'com.abhi.abhi_utility')}`),
-  },
-
-  /** Subscription products (same IDs as in Play Console / App Store Connect). */
-  products: {
-    monthly: env('PRODUCT_MONTHLY', 'abhi_pro_monthly'),
-    yearly: env('PRODUCT_YEARLY', 'abhi_pro_yearly'),
   },
 
   /** Outgoing email (Hostinger: smtp.hostinger.com, port 465, your mailbox + password). */
@@ -91,12 +74,6 @@ export const config = {
     proOnly: env('BACKUP_PRO_ONLY', 'false') === 'true',
   },
 
-  /** SOS when no contact answers: location + video, shared by a private link. */
-  sos: {
-    /** Days an SOS link (and its video) is kept. */
-    linkDays: Number(env('SOS_LINK_DAYS', 30)),
-    videoMaxMb: Number(env('SOS_VIDEO_MAX_MB', 60)),
-  },
 
   google: {
     packageName: env('GOOGLE_PACKAGE_NAME', 'com.abhi.abhi_utility'),

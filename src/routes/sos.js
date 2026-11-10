@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import express, { Router } from 'express';
-import { config } from '../config.js';
 import { query } from '../db.js';
 import { ah, HttpError } from '../http.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -16,6 +15,7 @@ import {
   userForKey,
   videoPath,
 } from '../services/sos.js';
+import { getSettings } from '../services/settings.js';
 
 /**
  * SOS when no contact answers (see services/sos.js).
@@ -65,7 +65,11 @@ sosRouter.post('/alerts', requireSosKey, ah(async (req, res) => {
 sosRouter.put(
   '/alerts/:token/video',
   requireSosKey,
-  express.raw({ type: () => true, limit: `${config.sos.videoMaxMb}mb` }),
+  // Size limit from /admin → Settings, read per upload.
+  ah(async (req, res, next) => {
+    const { sosVideoMaxMb } = await getSettings();
+    express.raw({ type: () => true, limit: `${sosVideoMaxMb}mb` })(req, res, next);
+  }),
   ah(async (req, res) => {
     const alert = await liveAlert(req.params.token);
     if (!alert || alert.user_id !== req.user.id) throw new HttpError(404, 'Alert not found', 'not_found');
@@ -85,7 +89,7 @@ sosRouter.get('/public/:token', ah(async (req, res) => {
   if (!a) throw new HttpError(404, 'This SOS link does not exist or has expired', 'not_found');
   res.set('Cache-Control', 'no-store');
   res.set('X-Robots-Tag', 'noindex');
-  const expires = new Date(new Date(a.created_at).getTime() + config.sos.linkDays * 86400_000);
+  const expires = new Date(new Date(a.created_at).getTime() + (await getSettings()).sosLinkDays * 86400_000);
   res.json({
     name: a.sender_name,
     createdAt: a.created_at,

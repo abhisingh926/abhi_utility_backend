@@ -11,6 +11,7 @@
 <body>
   <!-- Icon sprite -->
   <svg width="0" height="0" class="hidden" aria-hidden="true">
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
     <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
     <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
@@ -57,6 +58,7 @@
         <div class="nav-label">Manage</div>
         <a href="#users" data-view="users" class="active" aria-current="page"><svg class="icon"><use href="#i-users"/></svg>Users</a>
         <a href="#plans" data-view="plans"><svg class="icon"><use href="#i-tag"/></svg>Plans</a>
+        <a href="#settings" data-view="settings"><svg class="icon"><use href="#i-sliders"/></svg>Settings</a>
       </nav>
       <div class="sidebar-foot">
         <div class="me">
@@ -143,6 +145,34 @@
         <section class="card">
           <h3 class="card-title">Recent plan changes</h3>
           <ul id="plan-history" class="history pad"></ul>
+        </section>
+      </main>
+
+      <main class="content hidden" id="settings-view">
+        <header class="page-head">
+          <div>
+            <h1>Settings</h1>
+            <p>Free trial, referral rewards and SOS limits. Changes apply within 30 seconds, no redeploy needed.</p>
+          </div>
+        </header>
+
+        <p class="notice">Changes affect <strong>new</strong> trials, rewards and uploads only: trials and rewards already
+          given keep their length. Subscription product IDs are managed in <a href="#plans" data-goto="plans">Plans</a>.</p>
+
+        <form id="settings-form" novalidate>
+          <div id="settings-groups" class="settings-groups"></div>
+          <div class="settings-bar">
+            <p class="error" id="settings-error"></p>
+            <span class="spacer"></span>
+            <span class="hint" id="settings-dirty"></span>
+            <button type="button" class="ghost" id="settings-reset" disabled>Discard</button>
+            <button type="submit" class="primary" id="settings-save" disabled>Save changes</button>
+          </div>
+        </form>
+
+        <section class="card">
+          <h3 class="card-title">Recent settings changes</h3>
+          <ul id="settings-history" class="history pad"></ul>
         </section>
       </main>
     </div>

@@ -1,7 +1,7 @@
-import { config } from '../config.js';
 import { one, pool } from '../db.js';
 import { sha256 } from './tokens.js';
 import { trialEmailKey } from './trial-email.js';
+import { getSettings } from './settings.js';
 
 /** Each user has at most one trial row; this keeps it unique. */
 const trialRefHash = (userId) => sha256(`trial:${userId}`);
@@ -12,7 +12,8 @@ const trialRefHash = (userId) => sha256(`trial:${userId}`);
  * trial was already used or trials are switched off.
  */
 export async function startTrialIfEligible(user) {
-  if (!(config.trial.days > 0)) return false;
+  const { trialDays } = await getSettings();
+  if (!(trialDays > 0)) return false;
   if (!user.email_verified_at) return false; // starts once the email is confirmed
   if (await one("SELECT 1 FROM subscriptions WHERE user_id = ? AND source = 'trial' LIMIT 1", [user.id])) return false;
 
@@ -31,7 +32,7 @@ export async function startTrialIfEligible(user) {
       `INSERT IGNORE INTO subscriptions
          (user_id, source, product_id, store_ref_hash, status, auto_renew, starts_at, expires_at, note)
        VALUES (?, 'trial', 'free_trial', ?, 'active', 0, UTC_TIMESTAMP(), UTC_TIMESTAMP() + INTERVAL ? DAY, ?)`,
-      [user.id, trialRefHash(user.id), config.trial.days, `${config.trial.days}-day free trial`],
+      [user.id, trialRefHash(user.id), trialDays, `${trialDays}-day free trial`],
     );
     await conn.commit();
     return true;

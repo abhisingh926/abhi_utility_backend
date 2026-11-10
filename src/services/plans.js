@@ -1,4 +1,3 @@
-import { config } from '../config.js';
 import { HttpError } from '../http.js';
 import { one, query } from '../db.js';
 import { PRO_SQL } from './entitlements.js';
@@ -17,15 +16,17 @@ export const PERIODS = ['week', 'month', 'quarter', 'half_year', 'year'];
 /** Length of each billing period in months (for "per month" revenue). */
 const PERIOD_MONTHS = { week: 12 / 52, month: 1, quarter: 3, half_year: 6, year: 12 };
 
-/** Creates the two default plans (from PRODUCT_MONTHLY / PRODUCT_YEARLY) on an empty table. */
+/**
+ * Creates the two default plans on an empty table (first start). Product IDs are then
+ * managed in /admin → Plans; the PRODUCT_MONTHLY / PRODUCT_YEARLY env vars are no longer used.
+ */
 export async function seedPlans() {
   const { n } = await one('SELECT COUNT(*) AS n FROM plans');
   if (Number(n) > 0) return;
   await query(
     `INSERT IGNORE INTO plans (product_id, name, description, badge, billing_period, sort_order) VALUES
-     (?, 'Monthly', 'Cancel any time', NULL, 'month', 1),
-     (?, 'Yearly', 'Pay once a year', 'Best value', 'year', 2)`,
-    [config.products.monthly, config.products.yearly],
+     ('abhi_pro_monthly', 'Monthly', 'Cancel any time', NULL, 'month', 1),
+     ('abhi_pro_yearly', 'Yearly', 'Pay once a year', 'Best value', 'year', 2)`,
   );
 }
 

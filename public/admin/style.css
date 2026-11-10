@@ -381,6 +381,26 @@ p.hint.pad { margin: 0; padding-top: 12px; font-size: 13px; color: var(--muted);
 .danger-text:disabled { opacity: .45; }
 
 /* ---- Responsive ------------------------------------------------------------------- */
+/* ---- Settings ------------------------------------------------------------------ */
+.settings-groups { display: flex; flex-direction: column; gap: 16px; }
+.setting { display: grid; grid-template-columns: 1fr 200px; gap: 6px 24px; padding: 14px 16px; border-top: 1px solid var(--border); }
+.setting:first-of-type { border-top: 0; }
+.setting.changed { background: var(--primary-soft); }
+.setting-name { font-weight: 600; font-size: 14px; color: var(--text); }
+.setting-help { margin: 2px 0 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.setting-meta { margin: 4px 0 0; font-size: 12px; color: var(--faint); }
+.setting-input { display: flex; align-items: center; gap: 8px; align-self: center; }
+.setting-input input { width: 100%; text-align: right; font-variant-numeric: tabular-nums; }
+.setting-input .unit { min-width: 56px; font-size: 13px; color: var(--muted); }
+.setting-input input:invalid { border-color: var(--danger); }
+.settings-bar {
+  position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 16px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow);
+}
+.settings-bar .hint { font-size: 13px; color: var(--muted); }
+.settings-bar .error { flex-basis: 100%; order: -1; }
+
 @media (max-width: 1100px) {
   .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .stats.stats-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -412,3 +432,7 @@ p.hint.pad { margin: 0; padding-top: 12px; font-size: 13px; color: var(--muted);
 /* Profile photo inside an avatar circle */
 .avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
 .avatar:has(img) { overflow: hidden; padding: 0; }
+
+@media (max-width: 560px) {
+  .setting { grid-template-columns: 1fr; }
+}

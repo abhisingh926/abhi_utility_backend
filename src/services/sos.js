@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { config } from '../config.js';
 import { one, query } from '../db.js';
+import { getSettings } from './settings.js';
 
 /**
  * SOS alerts: when no SOS contact answers, the phone uploads its location and a
@@ -62,18 +63,18 @@ export async function createAlert(user, { lat, lng, accuracy }) {
 }
 
 /** Alert that is still within its link lifetime, or null. */
-export function liveAlert(token) {
+export async function liveAlert(token) {
   if (!isAlertToken(token)) return null;
   return one(
     `SELECT * FROM sos_alerts WHERE token = ? AND created_at > UTC_TIMESTAMP() - INTERVAL ? DAY`,
-    [token, config.sos.linkDays],
+    [token, (await getSettings()).sosLinkDays],
   );
 }
 
 /** Deletes alerts (and their videos) older than the link lifetime. */
 export async function pruneExpiredAlerts() {
   const old = await query('SELECT token FROM sos_alerts WHERE created_at <= UTC_TIMESTAMP() - INTERVAL ? DAY', [
-    config.sos.linkDays,
+    (await getSettings()).sosLinkDays,
   ]);
   for (const { token } of old) {
     await fs.rm(videoPath(token), { force: true });

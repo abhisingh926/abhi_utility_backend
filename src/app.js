@@ -14,6 +14,7 @@ import { plansRouter, purchasesRouter } from './routes/purchases.js';
 import { sosRouter, sosVideo } from './routes/sos.js';
 import { syncRouter } from './routes/sync.js';
 import { webhooksRouter } from './routes/webhooks.js';
+import { getSettings } from './services/settings.js';
 
 const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 
@@ -21,12 +22,19 @@ const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 
 const LEGAL_UPDATED = '10 November 2026';
 function legalPage(file) {
   const escape = (v) => String(v).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-  const html = readFileSync(path.join(publicDir, file), 'utf8')
+  const template = readFileSync(path.join(publicDir, file), 'utf8')
     .replaceAll('{{CONTACT_EMAIL}}', escape(config.supportEmail))
-    .replaceAll('{{SOS_LINK_DAYS}}', escape(config.sos.linkDays))
     .replaceAll('{{BACKUP_KEEP}}', escape(config.backup.keep))
     .replaceAll('{{UPDATED}}', LEGAL_UPDATED);
-  return (req, res) => res.type('html').send(html);
+  // SOS link lifetime is an admin setting: filled in per request.
+  return async (req, res, next) => {
+    try {
+      const { sosLinkDays } = await getSettings();
+      res.type('html').send(template.replaceAll('{{SOS_LINK_DAYS}}', escape(sosLinkDays)));
+    } catch (e) {
+      next(e);
+    }
+  };
 }
 
 export function createApp() {

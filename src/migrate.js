@@ -1,5 +1,6 @@
 import { one, query } from './db.js';
 import { seedPlans } from './services/plans.js';
+import { seedSettings } from './services/settings.js';
 
 /**
  * Database schema. Every statement is safe to run again, so this runs on every
@@ -185,6 +186,17 @@ const statements = [
     CONSTRAINT fk_sos_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
+  // Values changed in the admin panel (/admin → Settings), one row each; the list of
+  // settings and their limits is in services/settings.js. `value` is text so other
+  // kinds of setting can be added later.
+  `CREATE TABLE IF NOT EXISTS settings (
+    name VARCHAR(64) NOT NULL PRIMARY KEY,
+    value VARCHAR(255) NOT NULL,
+    updated_by INT UNSIGNED NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_setting_admin FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   `CREATE TABLE IF NOT EXISTS admin_actions (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     admin_id INT UNSIGNED NULL,
@@ -251,6 +263,7 @@ export async function migrate() {
   await addAvatarColumns();
   await addEmailVerification();
   await seedPlans();
+  await seedSettings();
 }
 
 const SOURCES = "ENUM('google','apple','admin','trial','referral')";

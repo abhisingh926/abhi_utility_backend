@@ -5,6 +5,7 @@ import { planBonusDays } from './bonus-days.js';
 import { newReferralCode, normalizeReferralCode } from './referral-code.js';
 import { sha256 } from './tokens.js';
 import { trialEmailKey } from './trial-email.js';
+import { getSettings } from './settings.js';
 
 /**
  * Referral program: every user has a code. When a NEW person registers with it
@@ -88,14 +89,15 @@ export async function applyReferral(user, referrer) {
     throw new HttpError(409, 'A referral code was already used with this email', 'referral_already_used');
   }
   // Only a person's first account counts (a deleted and re-created account doesn't).
-  if (config.trial.days > 0) {
+  const s = await getSettings();
+  if (s.trialDays > 0) {
     const claim = await one('SELECT user_id FROM trial_claims WHERE email_hash = ?', [hash]);
     if (claim && claim.user_id !== user.id) {
       throw new HttpError(409, 'Referral codes are only for new users', 'referral_not_new_user');
     }
   }
 
-  const { days, friendDays, maxPerYear } = config.referral;
+  const { referralDays: days, referralFriendDays: friendDays, referralMaxPerYear: maxPerYear } = s;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -141,7 +143,7 @@ async function canApply(user) {
     'SELECT TIMESTAMPDIFF(HOUR, created_at, UTC_TIMESTAMP()) AS hours FROM users WHERE id = ?',
     [user.id],
   );
-  return (age?.hours ?? 1e9) < config.referral.applyWithinDays * 24;
+  return (age?.hours ?? 1e9) < (await getSettings()).referralApplyDays * 24;
 }
 
 /** Hides most of an email: "ab•••@gmail.com". */
@@ -167,14 +169,15 @@ export async function referralSummary(user) {
   const yearCount = friends.filter(
     (f) => f.status === 'rewarded' && Date.now() - new Date(f.created_at).getTime() < 365 * 864e5,
   ).length;
+  const s = await getSettings();
   return {
     code,
     link: shareLink(code),
-    rewardDays: config.referral.days,
-    friendDays: config.referral.friendDays,
-    maxPerYear: config.referral.maxPerYear,
-    rewardsLeftThisYear: Math.max(0, config.referral.maxPerYear - yearCount),
-    applyWithinDays: config.referral.applyWithinDays,
+    rewardDays: s.referralDays,
+    friendDays: s.referralFriendDays,
+    maxPerYear: s.referralMaxPerYear,
+    rewardsLeftThisYear: Math.max(0, s.referralMaxPerYear - yearCount),
+    applyWithinDays: s.referralApplyDays,
     invited: friends.length,
     rewarded: friends.filter((f) => f.status === 'rewarded').length,
     daysEarned: friends.reduce((s, f) => s + (f.reward_days || 0), 0),
@@ -195,7 +198,7 @@ export async function applyLater(user, input) {
     const used = await one('SELECT 1 FROM referrals WHERE referred_user_id = ?', [user.id]);
     throw used
       ? new HttpError(409, 'You have already used a referral code', 'referral_already_used')
-      : new HttpError(400, `Referral codes can only be entered in the first ${config.referral.applyWithinDays} days after registering`, 'referral_too_late');
+      : new HttpError(400, `Referral codes can only be entered in the first ${(await getSettings()).referralApplyDays} days after registering`, 'referral_too_late');
   }
   return applyReferral(user, await findReferrer(input));
 }

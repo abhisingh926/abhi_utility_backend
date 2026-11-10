@@ -7,6 +7,7 @@ import { deleteUserSos } from '../services/sos.js';
 import { deleteAllBackups, deleteAllUserFiles, usageFor } from '../services/backups.js';
 import { entitlementFor, listSubscriptions, PRO_SQL, proSql } from '../services/entitlements.js';
 import { createPlan, deletePlan, plansWithStats, updatePlan } from '../services/plans.js';
+import { saveSettings, settingsForAdmin, getSettings, validateChanges } from '../services/settings.js';
 import { revokeAllForUser } from '../services/tokens.js';
 import { createUser, findById, hashPassword, publicUser } from '../services/users.js';
 import * as v from '../validate.js';
@@ -277,4 +278,26 @@ adminRouter.get('/plans/history', ah(async (req, res) => {
      WHERE a.action IN ('create_plan','update_plan','delete_plan') ORDER BY a.id DESC LIMIT 30`,
   );
   res.json({ history: rows });
+}));
+
+// ---- Settings (trial, referrals, SOS) ----------------------------------------------
+
+/** GET /admin/settings -> every setting with its limits, value and last change. */
+adminRouter.get('/settings', ah(async (req, res) => {
+  const history = await query(
+    `SELECT a.created_at, a.details, adm.email AS admin_email
+     FROM admin_actions a LEFT JOIN users adm ON adm.id = a.admin_id
+     WHERE a.action = 'update_settings' ORDER BY a.id DESC LIMIT 20`,
+  );
+  res.json({ settings: await settingsForAdmin(), history });
+}));
+
+/** PATCH /admin/settings { trialDays: 14, … } -> saves the changed values. */
+adminRouter.patch('/settings', ah(async (req, res) => {
+  const changes = validateChanges(req.body, await getSettings());
+  if (Object.keys(changes).length) {
+    await saveSettings(changes, req.user.id);
+    await logAction(req, null, 'update_settings', { changed: changes });
+  }
+  res.json({ settings: await settingsForAdmin(), changed: Object.keys(changes) });
 }));

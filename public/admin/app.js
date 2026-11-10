@@ -123,7 +123,7 @@
       $('#login-view').classList.add('hidden');
       $('#app-view').classList.remove('hidden');
       await Promise.all([loadStats(), loadUsers(), loadPlans()]);
-      showView(location.hash === '#plans' ? 'plans' : 'users');
+      showView(['#plans', '#settings'].includes(location.hash) ? location.hash.slice(1) : 'users');
     } catch (e) {
       logout();
       $('#login-error').textContent = e.message;
@@ -467,7 +467,7 @@
   // ---- Views ------------------------------------------------------------------------
 
   function showView(name) {
-    for (const v of ['users', 'plans']) {
+    for (const v of ['users', 'plans', 'settings']) {
       $(`#${v}-view`).classList.toggle('hidden', v !== name);
       const link = document.querySelector(`.nav a[data-view="${v}"]`);
       link.classList.toggle('active', v === name);
@@ -475,7 +475,15 @@
       else link.removeAttribute('aria-current');
     }
     if (name === 'plans') loadPlans().catch((e) => toast(e.message, true));
+    if (name === 'settings') loadSettings().catch((e) => toast(e.message, true));
   }
+  document.querySelectorAll('[data-goto]').forEach((a) =>
+    a.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      history.replaceState(null, '', `#${a.dataset.goto}`);
+      showView(a.dataset.goto);
+    }),
+  );
   document.querySelectorAll('.nav a[data-view]').forEach((a) =>
     a.addEventListener('click', (ev) => {
       ev.preventDefault();
@@ -653,6 +661,122 @@
     } catch (e) {
       $('#plan-error').textContent = e.message;
     }
+  });
+
+  // ---- Settings ---------------------------------------------------------------------
+
+  const settingsState = { list: [], labels: {} };
+
+  async function loadSettings() {
+    const { settings, history } = await api('/admin/settings');
+    renderSettings(settings);
+    renderSettingsHistory(history);
+  }
+
+  function renderSettings(list) {
+    settingsState.list = list;
+    settingsState.labels = Object.fromEntries(list.map((s) => [s.key, s.label]));
+    const groups = new Map();
+    for (const s of list) {
+      if (!groups.has(s.group)) groups.set(s.group, []);
+      groups.get(s.group).push(s);
+    }
+    $('#settings-groups').replaceChildren(
+      ...[...groups].map(([group, items]) =>
+        el('section', { class: 'card' }, el('h3', { class: 'card-title' }, group), ...items.map(settingRow)),
+      ),
+    );
+    $('#settings-error').textContent = '';
+    updateSettingsDirty();
+  }
+
+  function settingRow(s) {
+    const id = `setting-${s.key}`;
+    const input = el('input', {
+      id, name: s.key, type: 'number', inputmode: 'numeric', step: '1', min: s.min, max: s.max, required: '',
+      value: s.value, 'data-original': s.value, oninput: updateSettingsDirty,
+    });
+    const meta = [`Default ${s.default} ${s.unit}`, `allowed ${s.min}–${s.max}`];
+    if (s.updatedBy) meta.push(`last changed ${fmtDate(s.updatedAt)} by ${s.updatedBy}`);
+    return el('div', { class: 'setting', 'data-key': s.key },
+      el('div', {},
+        el('label', { for: id, class: 'setting-name' }, s.label),
+        el('p', { class: 'setting-help' }, s.help),
+        el('p', { class: 'setting-meta' }, meta.join(' · '))),
+      el('div', { class: 'setting-input' }, input, el('span', { class: 'unit' }, s.unit)),
+    );
+  }
+
+  /** Inputs whose value differs from what's saved. */
+  function settingsChanges() {
+    const out = {};
+    for (const input of $('#settings-groups').querySelectorAll('input[name]')) {
+      if (input.value !== input.dataset.original) out[input.name] = input.value === '' ? '' : Number(input.value);
+    }
+    return out;
+  }
+
+  function updateSettingsDirty() {
+    const changed = settingsChanges();
+    const n = Object.keys(changed).length;
+    for (const row of $('#settings-groups').querySelectorAll('.setting')) {
+      row.classList.toggle('changed', row.dataset.key in changed);
+    }
+    $('#settings-dirty').textContent = n ? `${n} unsaved change${n === 1 ? '' : 's'}` : '';
+    $('#settings-save').disabled = n === 0;
+    $('#settings-reset').disabled = n === 0;
+  }
+
+  $('#settings-reset').addEventListener('click', () => renderSettings(settingsState.list));
+
+  $('#settings-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const form = ev.target;
+    const bad = [...form.querySelectorAll('input[name]')].find((i) => !i.checkValidity());
+    if (bad) {
+      const s = settingsState.list.find((x) => x.key === bad.name);
+      $('#settings-error').textContent = `${s.label} must be a whole number from ${s.min} to ${s.max}.`;
+      bad.focus();
+      return;
+    }
+    const changes = settingsChanges();
+    if (!Object.keys(changes).length) return;
+    const lines = Object.entries(changes).map(([k, v]) => {
+      const s = settingsState.list.find((x) => x.key === k);
+      return `• ${s.label}: ${s.value} → ${v} ${s.unit}`;
+    });
+    if (!confirm(`Save these changes?\n\n${lines.join('\n')}\n\nThey apply to the app within 30 seconds.`)) return;
+    $('#settings-save').disabled = true;
+    try {
+      const { settings } = await api('/admin/settings', { method: 'PATCH', body: changes });
+      renderSettings(settings);
+      toast('Settings saved');
+      const { history } = await api('/admin/settings');
+      renderSettingsHistory(history);
+    } catch (e) {
+      $('#settings-error').textContent = e.message;
+      updateSettingsDirty();
+    }
+  });
+
+  function renderSettingsHistory(history) {
+    const describe = (a) => {
+      const d = typeof a.details === 'string' ? JSON.parse(a.details) : a.details || {};
+      return Object.entries(d.changed || {})
+        .map(([k, c]) => `${settingsState.labels[k] || k}: ${c.from} → ${c.to}`)
+        .join(', ');
+    };
+    $('#settings-history').replaceChildren(
+      ...(history.length
+        ? history.map((a) =>
+            el('li', {}, el('span', { class: 'when' }, `${fmtDate(a.created_at)} · ${a.admin_email || 'deleted admin'}`), describe(a)),
+          )
+        : [el('li', { class: 'none' }, 'No changes yet')]),
+    );
+  }
+
+  window.addEventListener('beforeunload', (ev) => {
+    if (!$('#settings-view').classList.contains('hidden') && Object.keys(settingsChanges()).length) ev.preventDefault();
   });
 
   // ---- Start ------------------------------------------------------------------------

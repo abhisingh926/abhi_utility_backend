@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { config } from '../config.js';
 import { ah } from '../http.js';
 import { requireAuth } from '../middleware/auth.js';
 import { syncApplePurchase } from '../services/apple.js';
@@ -7,6 +6,7 @@ import { entitlementFor } from '../services/entitlements.js';
 import { activePlans } from '../services/plans.js';
 import { syncGooglePurchase } from '../services/google.js';
 import * as v from '../validate.js';
+import { getSettings } from '../services/settings.js';
 
 export const plansRouter = Router();
 
@@ -16,7 +16,7 @@ export const plansRouter = Router();
  */
 plansRouter.get('/', ah(async (req, res) => {
   res.json({
-    trialDays: config.trial.days, // free trial after registering
+    trialDays: (await getSettings()).trialDays, // free trial after registering (/admin → Settings)
     products: (await activePlans()).map((p) => ({
       id: p.productId,
       name: p.name,
