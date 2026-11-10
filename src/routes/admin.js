@@ -4,7 +4,7 @@ import { ah, HttpError } from '../http.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { deleteAvatar, sendAvatar } from '../services/avatars.js';
 import { deleteUserSos } from '../services/sos.js';
-import { deleteAllBackups, usageFor } from '../services/backups.js';
+import { deleteAllBackups, deleteAllUserFiles, usageFor } from '../services/backups.js';
 import { entitlementFor, listSubscriptions, PRO_SQL, proSql } from '../services/entitlements.js';
 import { createPlan, deletePlan, plansWithStats, updatePlan } from '../services/plans.js';
 import { revokeAllForUser } from '../services/tokens.js';
@@ -228,7 +228,7 @@ adminRouter.post('/users/:id/subscriptions/:subId/revoke', ah(async (req, res) =
 adminRouter.delete('/users/:id', ah(async (req, res) => {
   const user = await targetUser(req);
   notSelf(req, user, 'delete');
-  await deleteAllBackups(user);
+  await deleteAllUserFiles(user);
   await deleteUserSos(user);
   await deleteAvatar(user);
   await query('DELETE FROM users WHERE id = ?', [user.id]);

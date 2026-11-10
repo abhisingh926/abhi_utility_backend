@@ -37,18 +37,25 @@ export async function pruneBackups(user, keep = config.backup.keep) {
 }
 
 /**
- * Deletes photos that no remaining backup refers to. Photos uploaded in the
- * last hour are kept: their backup may still be on its way.
+ * Deletes photos that no remaining backup or synced diary entry refers to.
+ * Photos uploaded in the last [graceHours] are kept: their backup / entry may
+ * still be on its way.
  */
-export async function removeUnusedPhotos(user) {
+export async function removeUnusedPhotos(user, graceHours = 1) {
   const used = new Set();
-  for (const b of await query('SELECT photo_hashes FROM backups WHERE user_id = ?', [user.id])) {
+  // Photos of backups and of synced diary entries (routes/sync.js) are both kept.
+  const rows = [
+    ...(await query('SELECT photo_hashes FROM backups WHERE user_id = ?', [user.id])),
+    ...(await query('SELECT photo_hashes FROM journal_entries WHERE user_id = ?', [user.id])),
+  ];
+  for (const b of rows) {
     const list = typeof b.photo_hashes === 'string' ? JSON.parse(b.photo_hashes) : b.photo_hashes;
     for (const h of list ?? []) used.add(h);
   }
   const photos = await query(
-    'SELECT sha256 FROM backup_photos WHERE user_id = ? AND created_at < UTC_TIMESTAMP() - INTERVAL 1 HOUR',
-    [user.id],
+    `SELECT sha256 FROM backup_photos WHERE user_id = ?
+     AND created_at < UTC_TIMESTAMP() - INTERVAL ? HOUR`,
+    [user.id, graceHours],
   );
   for (const { sha256 } of photos) {
     if (used.has(sha256)) continue;
@@ -57,8 +64,17 @@ export async function removeUnusedPhotos(user) {
   }
 }
 
-/** Removes all backup data of a user (account deletion / "delete my backups"). */
+/**
+ * "Delete my backups": removes every backup snapshot and the photos only they
+ * used. Photos of synced diary entries stay (the diary itself is not a backup).
+ */
 export async function deleteAllBackups(user) {
+  await query('DELETE FROM backups WHERE user_id = ?', [user.id]);
+  await removeUnusedPhotos(user, 0);
+}
+
+/** Account deletion: every stored file of the user (rows go with the user). */
+export async function deleteAllUserFiles(user) {
   await query('DELETE FROM backups WHERE user_id = ?', [user.id]);
   await query('DELETE FROM backup_photos WHERE user_id = ?', [user.id]);
   await fs.rm(userDir(user), { recursive: true, force: true });

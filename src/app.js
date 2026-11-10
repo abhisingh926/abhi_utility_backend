@@ -11,6 +11,7 @@ import { backupsRouter } from './routes/backups.js';
 import { meRouter } from './routes/me.js';
 import { plansRouter, purchasesRouter } from './routes/purchases.js';
 import { sosRouter, sosVideo } from './routes/sos.js';
+import { syncRouter } from './routes/sync.js';
 import { webhooksRouter } from './routes/webhooks.js';
 
 const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
@@ -29,6 +30,8 @@ export function createApp() {
   );
   // Backups may be larger than other requests; this parser must come first.
   app.use('/api/v1/backups', express.json({ limit: `${config.backup.maxPayloadMb + 1}mb` }));
+  // Synced diary text can be long; the app sends it in batches below this size.
+  app.use('/api/v1/sync', express.json({ limit: '5mb' }));
   app.use(express.json({ limit: '1mb' }));
 
   // Slow down password guessing and mass sign-ups.
@@ -61,6 +64,7 @@ export function createApp() {
   app.use('/api/v1/plans', plansRouter);
   app.use('/api/v1/purchases', purchasesRouter);
   app.use('/api/v1/backups', backupsRouter);
+  app.use('/api/v1/sync', syncRouter);
   app.use('/api/v1/sos/alerts', sosLimiter);
   app.use('/api/v1/sos', sosRouter);
   app.use('/api/v1/admin', adminRouter);

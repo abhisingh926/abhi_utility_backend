@@ -194,6 +194,52 @@ const statements = [
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_action_target (target_user_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  // ---- Live data synced from the app (see routes/sync.js) -------------------------
+
+  // To-do tasks. The app sends a whole day at a time; the day's rows are replaced.
+  `CREATE TABLE IF NOT EXISTS user_tasks (
+    user_id INT UNSIGNED NOT NULL,
+    day DATE NOT NULL,
+    task_id VARCHAR(40) NOT NULL,
+    position SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    text VARCHAR(1000) NOT NULL,
+    done TINYINT(1) NOT NULL DEFAULT 0,
+    important TINYINT(1) NOT NULL DEFAULT 0,
+    time CHAR(5) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    PRIMARY KEY (user_id, day, task_id),
+    CONSTRAINT fk_task_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // Diary entries. With a diary password the app encrypts text + mood on the phone:
+  // text/mood are NULL and encrypted_data holds the sealed copy (only the password opens it).
+  `CREATE TABLE IF NOT EXISTS journal_entries (
+    user_id INT UNSIGNED NOT NULL,
+    entry_id VARCHAR(40) NOT NULL,
+    entry_at DATETIME NOT NULL,
+    encrypted TINYINT(1) NOT NULL DEFAULT 0,
+    text MEDIUMTEXT NULL,
+    mood VARCHAR(16) NULL,
+    encrypted_data MEDIUMTEXT NULL,
+    photo_hashes JSON NULL,
+    updated_at DATETIME(3) NOT NULL,
+    PRIMARY KEY (user_id, entry_id),
+    INDEX idx_journal_user_date (user_id, entry_at),
+    CONSTRAINT fk_journal_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // Reels watched and time spent, per day and app.
+  `CREATE TABLE IF NOT EXISTS reel_stats (
+    user_id INT UNSIGNED NOT NULL,
+    day DATE NOT NULL,
+    app VARCHAR(100) NOT NULL,
+    reels INT UNSIGNED NOT NULL DEFAULT 0,
+    seconds INT UNSIGNED NOT NULL DEFAULT 0,
+    updated_at DATETIME(3) NOT NULL,
+    PRIMARY KEY (user_id, day, app),
+    CONSTRAINT fk_reel_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 ];
 
 export async function migrate() {
