@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Privacy policy · Abhi Utility</title>
+  <link rel="stylesheet" href="/static/site.css">
+</head>
+<body>
+  <a class="brand" href="/"><span class="brand-mark">A</span>Abhi Utility</a>
+  <main class="card doc">
+    <h1>Privacy policy</h1>
+    <p class="muted">Last updated: {{UPDATED}}</p>
+
+    <p>This policy explains what the Abhi Utility Android app ("the app") and its website collect, why, and what
+      you can do about it. Questions: <a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a>.</p>
+
+    <p><strong>In short:</strong> most tools work only on your phone. The app does not show ads, does not sell your data and does
+      not use your data for advertising. Data reaches our server only if you create an account or turn on SOS recording.</p>
+
+    <h2>1. Data that stays on your phone</h2>
+    <p>These are processed only on your device and are never sent to us:</p>
+    <ul>
+      <li>PDFs, scans, Word, Excel, CSV and Zip files you open, edit or create.</li>
+      <li>App Lock settings and passwords, the apps you lock and their time limits.</li>
+      <li>What the accessibility service sees (see section 4).</li>
+      <li>Files you download, saved WhatsApp statuses and the downloader's link history.</li>
+      <li>Your SOS contacts and SOS settings.</li>
+      <li>The list of installed apps (used to choose apps for App Lock and the reel counter, and by the APK extractor).</li>
+    </ul>
+
+    <h2>2. Data we collect when you create an account</h2>
+    <p>An account is optional. Without one, nothing in this section is collected.</p>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Data</th><th>Why</th></tr>
+        <tr><td>Email address, name, password (stored only as a secure hash), optional profile photo</td>
+          <td>To create and secure your account, sign you in, verify your email and reset your password.</td></tr>
+        <tr><td>Login sessions (device model, sign-in time)</td><td>To keep you signed in and let you sign out.</td></tr>
+        <tr><td>Subscription records from Google Play (product, status, dates, purchase token)</td>
+          <td>To unlock Pro features you paid for. Payments are handled by Google Play; we never see your card or bank details.</td></tr>
+        <tr><td>Free trial and referral records (a one-way hash of your email)</td>
+          <td>To give one free trial and one referral reward per email.</td></tr>
+        <tr><td>Tasks, diary entries and daily reel counts (app name, number of reels, minutes per day)</td>
+          <td>Synced to your account so you can see them on another device and restore them. If you set a diary
+            password, diary entries are encrypted on your phone before upload and we cannot read them.</td></tr>
+        <tr><td>Backups you make (diary, tasks and their photos)</td>
+          <td>To restore your data on a new phone. Encrypted on your phone when you set a backup/diary password.
+            The last {{BACKUP_KEEP}} backups are kept.</td></tr>
+      </table>
+    </div>
+
+    <h2>3. SOS</h2>
+    <p>SOS is off until you set it up. When it is triggered:</p>
+    <ul>
+      <li>The app calls your SOS contacts using your phone's dialer.</li>
+      <li>If you turned on "Text my location", it reads your current location once and sends it to your SOS contacts by SMS
+        from your own SIM (normal SMS charges apply).</li>
+      <li>If you turned on recording (requires an account), it records 30 seconds of video and sound, uploads it to our
+        server with your location, and texts your contacts a private link. Anyone with the link can view it.
+        Recordings and links are deleted automatically after {{SOS_LINK_DAYS}} days, or when you delete your account.</li>
+    </ul>
+    <p>Location, camera and microphone are used only at the moment SOS is triggered, never in the background otherwise.</p>
+
+    <h2>4. Accessibility service</h2>
+    <p>If you turn it on (after an in-app explanation that asks for your consent), the app uses Android's Accessibility
+      Service API for these features only:</p>
+    <ul>
+      <li><strong>App Lock:</strong> sees which app is opened, to ask for your password before a locked app is shown and to
+        enforce the time limits you set.</li>
+      <li><strong>Reel counter:</strong> sees scrolling in Instagram, YouTube, Facebook, Snapchat and similar apps to count reels
+        and time spent.</li>
+      <li><strong>Download button:</strong> when you tap it in a web browser, reads the address bar once to get the page link.</li>
+      <li><strong>SOS:</strong> notices when the lock screen is shown, so an emergency call can be started from it.</li>
+    </ul>
+    <p>It does not read your messages, passwords or what you type, and it does not record your screen. Screen content is never
+      uploaded or shared. Only the daily reel counts described in section 2 are synced, and only if you are signed in.
+      You can turn the service off at any time in Android Settings → Accessibility.</p>
+
+    <h2>5. Permissions</h2>
+    <ul>
+      <li><strong>Camera:</strong> document scanner, profile photo and SOS recording.</li>
+      <li><strong>Microphone:</strong> sound of the SOS recording.</li>
+      <li><strong>Location:</strong> SOS location message and recording only.</li>
+      <li><strong>Phone:</strong> placing SOS calls and noticing when a call ends.</li>
+      <li><strong>SMS:</strong> sending SOS alerts to your SOS contacts. The app never reads your messages.</li>
+      <li><strong>Notifications, flashlight, vibration, biometrics:</strong> status notifications, the shake flashlight,
+        SOS alerts and fingerprint unlock (your fingerprint never leaves Android's secure hardware).</li>
+      <li><strong>Internet:</strong> account, sync, backups, downloads and the in-app browser.</li>
+    </ul>
+
+    <h2>6. Who we share data with</h2>
+    <p>We do not sell or rent personal data. We share it only with:</p>
+    <ul>
+      <li><strong>Our hosting provider</strong>, which stores our server and database.</li>
+      <li><strong>Our email provider</strong>, to send verification and password-reset emails.</li>
+      <li><strong>Google Play</strong>, which processes subscriptions under Google's own privacy policy.</li>
+      <li><strong>Your SOS contacts</strong>, who receive what you chose to send them.</li>
+      <li>Authorities, if the law requires it.</li>
+    </ul>
+    <p>The document scanner uses Google ML Kit, which runs on your phone. Web pages you open in the in-app browser or
+      downloader are loaded directly from those sites, which have their own privacy policies.</p>
+
+    <h2>7. Security</h2>
+    <p>All traffic to our server uses HTTPS. Passwords are stored as one-way hashes. Diary entries and backups can be
+      encrypted on your phone with a password only you know.</p>
+
+    <h2>8. How long we keep data</h2>
+    <ul>
+      <li>Account data, synced data and backups: until you delete them or your account.</li>
+      <li>SOS recordings and links: {{SOS_LINK_DAYS}} days.</li>
+      <li>Hashed email for the free trial and referrals: kept after account deletion so a trial can't be claimed twice.
+        It can't be turned back into your email.</li>
+      <li>Server logs (IP address, time, request): kept for a short time for security and troubleshooting.</li>
+    </ul>
+
+    <h2>9. Deleting your data</h2>
+    <p>You can delete your account and all data on our server at any time:</p>
+    <ul>
+      <li>In the app: Profile → Delete account.</li>
+      <li>On the web: <a href="/delete-account">delete your account</a>.</li>
+    </ul>
+    <p>Data stored only on your phone is removed when you uninstall the app. Deleting your account does not cancel a Google
+      Play subscription; cancel it in the Play Store.</p>
+
+    <h2>10. Children</h2>
+    <p>The app is not directed at children under 13, and we do not knowingly collect personal data from them. If you
+      believe a child has given us personal data, contact us and we will delete it.</p>
+
+    <h2>11. Your rights</h2>
+    <p>You can ask us for a copy of your data, to correct it or to delete it by emailing
+      <a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a>. You can also change your name and photo, and delete
+      your account, yourself in the app.</p>
+
+    <h2>12. Changes</h2>
+    <p>If we change this policy, we will update the date above and, for important changes, tell you in the app.</p>
+
+    <p class="muted">See also our <a href="/terms">terms of use</a>.</p>
+  </main>
+  <p class="foot">© Abhi Utility</p>
+</body>
+</html>

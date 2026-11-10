@@ -75,6 +75,9 @@ export const config = {
     appName: env('APP_NAME', 'Abhi Utility'),
   },
 
+  /** Contact address on the privacy policy and terms pages (Play Console needs one too). */
+  supportEmail: env('SUPPORT_EMAIL', env('MAIL_FROM', env('SMTP_USER', ''))),
+
   /** Testing only (never in production): password-reset API returns the code. */
   exposeResetCodeForTests: env('EXPOSE_RESET_CODE_FOR_TESTS') === 'true' && nodeEnv !== 'production',
 

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -15,6 +16,18 @@ import { syncRouter } from './routes/sync.js';
 import { webhooksRouter } from './routes/webhooks.js';
 
 const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
+
+/** Privacy policy / terms (linked from Google Play and the app), filled in from the config. */
+const LEGAL_UPDATED = '10 November 2026';
+function legalPage(file) {
+  const escape = (v) => String(v).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  const html = readFileSync(path.join(publicDir, file), 'utf8')
+    .replaceAll('{{CONTACT_EMAIL}}', escape(config.supportEmail))
+    .replaceAll('{{SOS_LINK_DAYS}}', escape(config.sos.linkDays))
+    .replaceAll('{{BACKUP_KEEP}}', escape(config.backup.keep))
+    .replaceAll('{{UPDATED}}', LEGAL_UPDATED);
+  return (req, res) => res.type('html').send(html);
+}
 
 export function createApp() {
   const app = express();
@@ -72,6 +85,8 @@ export function createApp() {
 
   // Admin panel and public pages.
   app.use('/admin', express.static(path.join(publicDir, 'admin')));
+  app.get('/privacy', legalPage('privacy.html'));
+  app.get('/terms', legalPage('terms.html'));
   app.get('/delete-account', (req, res) => res.sendFile(path.join(publicDir, 'delete-account.html')));
   app.get('/reset-password', (req, res) => res.sendFile(path.join(publicDir, 'reset-password.html')));
   // SOS link sent by SMS to the contacts: location + video, no login.
